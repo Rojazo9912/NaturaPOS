@@ -1,0 +1,678 @@
+// Natural OS — Prisma Schema
+// Natural by Nutrit — Sistema Operativo Wellness
+// Arquitectura Multi-Tenant, Multi-Sucursal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// MULTI-TENANT: ORGANIZACIÓN / CORPORATIVO
+// ─────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  plan      Plan     @default(STARTER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches    Branch[]
+  users       User[]
+  products    Product[]
+  ingredients Ingredient[]
+  customers   Customer[]
+  subscriptionPlans SubscriptionPlan[]
+
+  @@map("organizations")
+}
+
+enum Plan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+// ─────────────────────────────────────────────
+// SUCURSALES
+// ─────────────────────────────────────────────
+
+model Branch {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  phone          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  users          User[]
+  orders         Order[]
+  cashRegisters  CashRegister[]
+  inventory      BranchInventory[]
+  transfers      InventoryTransfer[] @relation("BranchFrom")
+  transfersTo    InventoryTransfer[] @relation("BranchTo")
+  auditLogs      AuditLog[]
+
+  @@map("branches")
+}
+
+// ─────────────────────────────────────────────
+// USUARIOS Y ROLES
+// ─────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  organizationId String
+  branchId       String?
+  email          String   @unique
+  passwordHash   String
+  name           String
+  phone          String?
+  role           Role     @default(CASHIER)
+  isActive       Boolean  @default(true)
+  mfaEnabled     Boolean  @default(false)
+  mfaSecret      String?
+  riskScore      Float    @default(0)   // Motor antifugas
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  branch         Branch?      @relation(fields: [branchId], references: [id])
+  orders         Order[]
+  auditLogs      AuditLog[]
+  cashRegisters  CashRegister[]
+  discounts      Discount[]
+
+  @@map("users")
+}
+
+enum Role {
+  CASHIER           // Solo sucursal asignada
+  SUPERVISOR        // Varias sucursales
+  REGIONAL_MANAGER  // Zona específica
+  ADMIN             // Admin corporativo
+  OWNER             // Control absoluto
+}
+
+// ─────────────────────────────────────────────
+// CLIENTES — CRM EMOCIONAL
+// ─────────────────────────────────────────────
+
+model Customer {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  phone          String        @unique
+  email          String?
+  birthDate      DateTime?
+  avatarUrl      String?
+  level          CustomerLevel @default(VERDE)
+  totalVisits    Int           @default(0)
+  totalSpent     Float         @default(0)
+  points         Float         @default(0)   // Natural Points
+  walletBalance  Float         @default(0)   // Wallet interna
+  notes          String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  orders          Order[]
+  pointsHistory   PointsHistory[]
+  subscriptions   CustomerSubscription[]
+
+  @@map("customers")
+}
+
+enum CustomerLevel {
+  VERDE   // Base
+  GOLD    // Descuentos
+  ELITE   // Acceso premium
+  LEGEND  // Beneficios VIP
+}
+
+// ─────────────────────────────────────────────
+// NATURAL POINTS — Sistema de Lealtad
+// ─────────────────────────────────────────────
+
+model PointsHistory {
+  id          String           @id @default(cuid())
+  customerId  String
+  orderId     String?
+  type        PointsEventType
+  points      Float
+  description String?
+  createdAt   DateTime         @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id])
+  order       Order?   @relation(fields: [orderId], references: [id])
+
+  @@map("points_history")
+}
+
+enum PointsEventType {
+  EARNED      // Compra
+  REDEEMED    // Canjeo
+  BONUS       // Hito / recompensa
+  EXPIRED     // Vencimiento
+  ADJUSTED    // Ajuste manual
+}
+
+// ─────────────────────────────────────────────
+// CATÁLOGO — PRODUCTOS
+// ─────────────────────────────────────────────
+
+model Category {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  emoji          String?
+  color          String?
+  sortOrder      Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+
+  products       Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id             String      @id @default(cuid())
+  organizationId String
+  categoryId     String?
+  name           String
+  description    String?
+  imageUrl       String?
+  price          Float
+  costPrice      Float       @default(0)   // Costo calculado de receta
+  type           ProductType @default(SIMPLE)
+  isActive       Boolean     @default(true)
+  isFavorite     Boolean     @default(false)
+  barcode        String?     @unique
+  sku            String?
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  recipe         Recipe?
+  orderItems     OrderItem[]
+  comboItems     ComboItem[]  @relation("ComboParent")
+  asComboChild   ComboItem[]  @relation("ComboChild")
+  inventory      BranchInventory[]
+
+  @@map("products")
+}
+
+enum ProductType {
+  SIMPLE     // Producto directo
+  RECIPE     // Tiene receta (smoothie, etc.)
+  COMBO      // Combo de productos
+  SERVICE    // Servicio
+}
+
+// ─────────────────────────────────────────────
+// RECETAS Y COSTEO INTELIGENTE
+// ─────────────────────────────────────────────
+
+model Recipe {
+  id          String         @id @default(cuid())
+  productId   String         @unique
+  notes       String?
+  yieldQty    Float          @default(1)   // Porciones que produce
+  totalCost   Float          @default(0)   // Calculado automáticamente
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  product     Product        @relation(fields: [productId], references: [id])
+  items       RecipeItem[]
+
+  @@map("recipes")
+}
+
+model RecipeItem {
+  id           String     @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float      // En la unidad del ingrediente
+  unit         Unit
+  costAtTime   Float      @default(0)  // Snapshot del costo al guardar
+  notes        String?
+
+  recipe       Recipe     @relation(fields: [recipeId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@map("recipe_items")
+}
+
+// ─────────────────────────────────────────────
+// INGREDIENTES
+// ─────────────────────────────────────────────
+
+model Ingredient {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  unit           Unit
+  costPerUnit    Float
+  stock          Float    @default(0)
+  minStock       Float    @default(0)   // Para alertas
+  imageUrl       String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  recipeItems    RecipeItem[]
+  branchStock    BranchInventory[]
+
+  @@map("ingredients")
+}
+
+enum Unit {
+  GRAM
+  KILOGRAM
+  MILLILITER
+  LITER
+  UNIT
+  TABLESPOON
+  TEASPOON
+  CUP
+  OUNCE
+}
+
+// ─────────────────────────────────────────────
+// COMBOS
+// ─────────────────────────────────────────────
+
+model ComboItem {
+  id        String  @id @default(cuid())
+  parentId  String
+  childId   String
+  quantity  Int     @default(1)
+
+  parent    Product @relation("ComboParent", fields: [parentId], references: [id])
+  child     Product @relation("ComboChild", fields: [childId], references: [id])
+
+  @@map("combo_items")
+}
+
+// ─────────────────────────────────────────────
+// INVENTARIO POR SUCURSAL
+// ─────────────────────────────────────────────
+
+model BranchInventory {
+  id           String   @id @default(cuid())
+  branchId     String
+  productId    String?
+  ingredientId String?
+  quantity     Float    @default(0)
+  minStock     Float    @default(0)
+  updatedAt    DateTime @updatedAt
+
+  branch       Branch      @relation(fields: [branchId], references: [id])
+  product      Product?    @relation(fields: [productId], references: [id])
+  ingredient   Ingredient? @relation(fields: [ingredientId], references: [id])
+
+  @@unique([branchId, productId])
+  @@unique([branchId, ingredientId])
+  @@map("branch_inventory")
+}
+
+model InventoryMovement {
+  id           String        @id @default(cuid())
+  branchId     String
+  ingredientId String?
+  productId    String?
+  type         MovementType
+  quantity     Float
+  reason       String?
+  userId       String
+  orderId      String?
+  createdAt    DateTime      @default(now())
+
+  @@map("inventory_movements")
+}
+
+enum MovementType {
+  SALE          // Descuento por venta
+  PURCHASE      // Entrada por compra
+  WASTE         // Merma
+  ADJUSTMENT    // Ajuste manual
+  TRANSFER_OUT  // Salida por transferencia
+  TRANSFER_IN   // Entrada por transferencia
+}
+
+model InventoryTransfer {
+  id          String           @id @default(cuid())
+  fromBranchId String
+  toBranchId  String
+  status      TransferStatus   @default(PENDING)
+  notes       String?
+  userId      String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  fromBranch  Branch           @relation("BranchFrom", fields: [fromBranchId], references: [id])
+  toBranch    Branch           @relation("BranchTo", fields: [toBranchId], references: [id])
+  items       TransferItem[]
+
+  @@map("inventory_transfers")
+}
+
+model TransferItem {
+  id           String            @id @default(cuid())
+  transferId   String
+  ingredientId String?
+  productId    String?
+  quantity     Float
+
+  transfer     InventoryTransfer @relation(fields: [transferId], references: [id])
+
+  @@map("transfer_items")
+}
+
+enum TransferStatus {
+  PENDING
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+// ─────────────────────────────────────────────
+// ÓRDENES / VENTAS
+// ─────────────────────────────────────────────
+
+model Order {
+  id             String       @id @default(cuid())
+  branchId       String
+  cashierId      String
+  customerId     String?
+  orderNumber    String       @unique
+  status         OrderStatus  @default(PENDING)
+  subtotal       Float
+  discountAmount Float        @default(0)
+  taxAmount      Float        @default(0)
+  total          Float
+  pointsEarned   Float        @default(0)
+  pointsRedeemed Float        @default(0)
+  notes          String?
+  isOffline      Boolean      @default(false)  // Modo sin internet
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  branch         Branch       @relation(fields: [branchId], references: [id])
+  cashier        User         @relation(fields: [cashierId], references: [id])
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  items          OrderItem[]
+  payments       Payment[]
+  discount       Discount?
+  pointsHistory  PointsHistory[]
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  unitPrice  Float
+  costPrice  Float   @default(0)
+  discount   Float   @default(0)
+  subtotal   Float
+  notes      String?
+
+  order      Order   @relation(fields: [orderId], references: [id])
+  product    Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// ─────────────────────────────────────────────
+// PAGOS
+// ─────────────────────────────────────────────
+
+model Payment {
+  id            String      @id @default(cuid())
+  orderId       String
+  method        PaymentMethod
+  amount        Float
+  reference     String?     // Para transferencias / tarjeta
+  status        PaymentStatus @default(COMPLETED)
+  createdAt     DateTime    @default(now())
+
+  order         Order       @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  WALLET       // Wallet interna del cliente
+  QR
+  POINTS       // Canje de puntos
+  MIXED        // Pago mixto
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// ─────────────────────────────────────────────
+// DESCUENTOS
+// ─────────────────────────────────────────────
+
+model Discount {
+  id          String       @id @default(cuid())
+  orderId     String?      @unique
+  userId      String
+  type        DiscountType
+  amount      Float
+  reason      String?
+  approvedBy  String?      // Para descuentos que requieren autorización
+  createdAt   DateTime     @default(now())
+
+  order       Order?   @relation(fields: [orderId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("discounts")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  LOYALTY
+  PROMOTION
+  MANUAL       // Requiere aprobación — antifugas
+}
+
+// ─────────────────────────────────────────────
+// CORTE DE CAJA — DOBLE PROPÓSITO (A y B)
+// ─────────────────────────────────────────────
+
+model CashRegister {
+  id             String         @id @default(cuid())
+  branchId       String
+  userId         String
+  openedAt       DateTime       @default(now())
+  closedAt       DateTime?
+  openingAmount  Float          @default(0)
+  closingAmount  Float?
+  expectedAmount Float?         // Calculado por sistema
+  difference     Float?         // Diferencia detectada
+  status         RegisterStatus @default(OPEN)
+  notes          String?
+
+  branch         Branch         @relation(fields: [branchId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
+  cuts           FinancialCut[]
+
+  @@map("cash_registers")
+}
+
+enum RegisterStatus {
+  OPEN
+  CLOSED
+  FORCED_CLOSE  // Cierre forzado (alerta antifugas)
+}
+
+model FinancialCut {
+  id             String   @id @default(cuid())
+  cashRegisterId String
+  type           CutType
+  totalSales     Float
+  totalCash      Float
+  totalCard      Float
+  totalTransfer  Float
+  totalWallet    Float
+  totalQR        Float
+  totalRefunds   Float
+  totalDiscounts Float
+  totalWaste     Float
+  grossProfit    Float
+  netProfit      Float
+  taxAmount      Float
+  notes          String?
+  exportedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+
+  @@map("financial_cuts")
+}
+
+enum CutType {
+  ADMIN    // Corte A — Verdad absoluta del negocio
+  FISCAL   // Corte B — Reporte contable/fiscal
+}
+
+// ─────────────────────────────────────────────
+// SUSCRIPCIONES
+// ─────────────────────────────────────────────
+
+model SubscriptionPlan {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String   // "PLAN RECOVERY", "PLAN ELITE", etc.
+  description    String?
+  price          Float
+  intervalDays   Int      @default(30)
+  smoothiesQty   Int?
+  discountPct    Float    @default(0)
+  pointsMultiplier Float  @default(1)
+  benefits       Json?    // Array de beneficios
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization   Organization           @relation(fields: [organizationId], references: [id])
+  subscriptions  CustomerSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model CustomerSubscription {
+  id         String             @id @default(cuid())
+  customerId String
+  planId     String
+  status     SubscriptionStatus @default(ACTIVE)
+  startDate  DateTime           @default(now())
+  endDate    DateTime?
+  nextBilling DateTime?
+  createdAt  DateTime           @default(now())
+
+  customer   Customer           @relation(fields: [customerId], references: [id])
+  plan       SubscriptionPlan   @relation(fields: [planId], references: [id])
+
+  @@map("customer_subscriptions")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXPIRED
+}
+
+// ─────────────────────────────────────────────
+// AUDITORÍA — SEGURIDAD EMPRESARIAL
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  branchId  String?
+  userId    String?
+  action    String   // Qué acción se realizó
+  entity    String   // Qué entidad fue afectada
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  device    String?
+  createdAt DateTime @default(now())
+
+  branch    Branch? @relation(fields: [branchId], references: [id])
+  user      User?   @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// ALERTAS DE RIESGO — MOTOR ANTIFUGAS
+// ─────────────────────────────────────────────
+
+model RiskAlert {
+  id          String    @id @default(cuid())
+  branchId    String
+  userId      String?
+  type        RiskType
+  severity    Severity
+  description String
+  isResolved  Boolean   @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime  @default(now())
+
+  @@map("risk_alerts")
+}
+
+enum RiskType {
+  SUSPICIOUS_DISCOUNT     // Descuento sospechoso
+  EXCESSIVE_CANCELLATIONS // Cancelaciones excesivas
+  MANUAL_CASH_OPEN        // Apertura manual de caja
+  CASH_DIFFERENCE         // Diferencia de caja
+  ALTERED_TICKET          // Ticket alterado
+  UNUSUAL_HOUR_ACCESS     // Acceso fuera de horario
+  REPEATED_REFUNDS        // Devoluciones repetidas
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
