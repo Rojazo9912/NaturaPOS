@@ -1,14 +1,12 @@
 # ─────────────────────────────────────────────
 # Natural OS — Dockerfile
-# NODE_ENV=production va DESPUÉS del build para que
-# npm ci instale devDependencies (incluye @nestjs/cli)
 # ─────────────────────────────────────────────
 
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Instalar TODAS las deps (dev + prod) para poder compilar
+# Instalar TODAS las deps (dev + prod) — NODE_ENV no debe estar seteado aquí
 COPY package*.json ./
 COPY prisma ./prisma/
 RUN npm ci
@@ -16,16 +14,25 @@ RUN npm ci
 # Generar Prisma Client
 RUN npx prisma generate
 
-# Copiar código fuente y compilar
+# Copiar código fuente
 COPY . .
-RUN npm run build
 
-# Eliminar devDependencies después del build
+# Limpiar cache incremental de TypeScript (evita builds vacíos)
+RUN rm -f *.tsbuildinfo
+
+# Compilar con verificación explícita
+RUN npm run build && \
+    echo "=== dist/ contents ===" && \
+    ls -la dist/ && \
+    test -f dist/main.js && \
+    echo "✅ dist/main.js verified"
+
+# Eliminar devDependencies
 RUN npm prune --production
 
-# Ahora sí setear producción (DESPUÉS del build)
+# Setear producción DESPUÉS del build
 ENV NODE_ENV=production
 
 EXPOSE 3001
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]

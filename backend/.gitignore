@@ -4,6 +4,9 @@ node_modules/
 # Build
 dist/
 
+# TypeScript incremental cache (bloquea builds en Docker)
+*.tsbuildinfo
+
 # Environment
 .env
 .env.local
