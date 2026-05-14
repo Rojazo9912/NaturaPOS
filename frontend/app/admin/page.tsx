@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  getToken,
+  getToken, getUser,
   apiGetProducts,
   apiGetCategories,
   apiGetIngredients,
@@ -83,7 +83,18 @@ export default function AdminPage() {
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--c-text)' }}>Panel de Administración</h1>
           <p style={{ color: 'var(--c-text-muted)' }}>Gestión de Catálogo, Recetas e Insumos</p>
         </div>
-        <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <a href="/profile" title="Mi Perfil" style={{
+            width: '36px', height: '36px', borderRadius: '50%',
+            background: 'var(--c-surface-2)', border: '2px solid var(--c-border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '13px', fontWeight: 800, color: 'var(--c-text)', textDecoration: 'none',
+            transition: 'border-color 0.2s',
+          }}>
+            {getUser()?.name?.charAt(0)?.toUpperCase() ?? '?'}
+          </a>
+          <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
+        </div>
       </div>
 
       <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>

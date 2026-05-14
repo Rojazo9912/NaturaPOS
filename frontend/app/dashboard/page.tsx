@@ -117,6 +117,9 @@ export default function DashboardPage() {
             📥 Reporte CSV
           </button>
           <a href="/pos" className="px-3.5 py-1.5 rounded-md text-xs font-semibold bg-green-500 text-black no-underline hover:brightness-110">💳 Ir al POS</a>
+          <a href="/profile" title="Mi Perfil" className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 hover:border-green-500 flex items-center justify-center text-xs font-black text-white no-underline transition-colors">
+            {getUser()?.name?.charAt(0)?.toUpperCase() ?? '?'}
+          </a>
           <button onClick={() => { clearSession(); router.push('/login') }}
             className="text-xs text-zinc-500 bg-transparent border-none cursor-pointer hover:text-white">
             Salir
