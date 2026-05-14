@@ -46,6 +46,7 @@ export default function POSPage() {
   const [showPayModal, setShowPayModal]       = useState(false)
   const [cashGiven, setCashGiven]   = useState('')
   const [orderDone, setOrderDone]   = useState(false)
+  const [pointsToRedeem, setPointsToRedeem] = useState('')
   const [paying, setPaying]         = useState(false)
   const [payError, setPayError]     = useState('')
 
@@ -106,8 +107,9 @@ export default function POSPage() {
 
   const subtotal   = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const discount   = customer ? Math.round(subtotal * 0.05) : 0
-  const finalTotal = subtotal - discount
-  const pointsEarned = Math.floor(finalTotal * 0.05)
+  const redeemed   = Number(pointsToRedeem) || 0
+  const finalTotal = Math.max(0, subtotal - redeemed)
+  const pointsEarned = Math.floor(finalTotal * 0.10)
   const change     = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
 
   const catList = [ALL_CAT, ...categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
@@ -125,6 +127,11 @@ export default function POSPage() {
     setPaying(true)
     setPayError('')
     try {
+      const redeemed = Number(pointsToRedeem) || 0
+      const payments = []
+      if (redeemed > 0) payments.push({ method: 'POINTS', amount: redeemed })
+      if (finalTotal > 0) payments.push({ method: paymentMethod, amount: finalTotal })
+
       await apiCreateOrder(token, {
         customerId: customer?.id,
         subtotal,
@@ -135,8 +142,9 @@ export default function POSPage() {
           unitPrice: i.price,
           subtotal: i.price * i.qty,
         })),
-        payments: [{ method: paymentMethod, amount: finalTotal }],
+        payments,
         pointsEarned: customer ? pointsEarned : 0,
+        pointsRedeemed: redeemed,
       })
       setOrderDone(true)
       setTimeout(() => {
@@ -145,6 +153,7 @@ export default function POSPage() {
         setPhoneQuery('')
         setCashGiven('')
         setPaymentMethod('CASH')
+        setPointsToRedeem('')
         setShowPayModal(false)
         setOrderDone(false)
       }, 2200)
@@ -454,11 +463,34 @@ export default function POSPage() {
                       <span>Descuento 5%</span><span>−{fmt(discount)}</span>
                     </div>
                   )}
+                  {redeemed > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#f59e0b', paddingTop: '4px' }}>
+                      <span>Pago con Puntos ({redeemed})</span><span>−{fmt(redeemed)}</span>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--c-border)', paddingTop: '12px', marginTop: '8px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '16px' }}>Total</span>
+                    <span style={{ fontWeight: 700, fontSize: '16px' }}>Total a pagar</span>
                     <span style={{ fontWeight: 800, fontSize: '20px', color: 'var(--c-green)' }}>{fmt(finalTotal)}</span>
                   </div>
                 </div>
+
+                {customer && customer.points > 0 && (
+                  <div style={{ marginBottom: '20px', background: '#f59e0b10', padding: '12px', borderRadius: '12px', border: '1px solid #f59e0b30' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 600 }}>🌟 Tienes {customer.points} puntos</span>
+                      <span style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>1 pt = $1</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input value={pointsToRedeem} onChange={e => setPointsToRedeem(e.target.value.replace(/\D/g, ''))}
+                        placeholder="0" type="number" className="input-dark" max={Math.min(customer.points, subtotal - discount)}
+                        style={{ width: '100%', padding: '8px 12px' }} />
+                      <button onClick={() => setPointsToRedeem(Math.min(customer.points, subtotal - discount).toString())}
+                              className="btn-ghost" style={{ padding: '8px 12px', color: '#f59e0b' }}>
+                        Usar Max
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {paymentMethod === 'CASH' && (
                   <div style={{ marginBottom: '20px' }}>

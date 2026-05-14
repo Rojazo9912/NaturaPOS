@@ -55,21 +55,48 @@ export class OrdersService {
         },
       });
 
-      // Si hay cliente, sumar puntos
-      if (data.customerId && data.pointsEarned) {
-        await tx.customer.update({
-          where: { id: data.customerId },
-          data: { points: { increment: data.pointsEarned } },
-        });
+      // ── Motor de Lealtad (Natural Points & Niveles) ──
+      if (data.customerId) {
+        // 1. Obtener cliente actual para revisar niveles
+        const customer = await tx.customer.findUnique({ where: { id: data.customerId } });
+        
+        if (customer) {
+          const newVisits = customer.totalVisits + 1;
+          const newSpent = customer.totalSpent + data.total;
+          
+          // 2. Lógica de Subida de Nivel Automática
+          let newLevel = customer.level;
+          if (newVisits >= 50 || newSpent >= 15000) newLevel = 'LEGEND';
+          else if (newVisits >= 20 || newSpent >= 5000) newLevel = 'ELITE';
+          else if (newVisits >= 5 || newSpent >= 1000) newLevel = 'GOLD';
 
-        await tx.pointsHistory.create({
-          data: {
-            customerId: data.customerId,
-            orderId: order.id,
-            type: 'EARNED',
-            points: data.pointsEarned,
-          },
-        });
+          // 3. Puntos ganados y redimidos
+          const pointsEarned = data.pointsEarned || 0;
+          const pointsRedeemed = data.pointsRedeemed || 0;
+
+          // 4. Actualizar cliente
+          await tx.customer.update({
+            where: { id: data.customerId },
+            data: { 
+              totalVisits: { increment: 1 },
+              totalSpent: { increment: data.total },
+              points: { increment: pointsEarned - pointsRedeemed },
+              level: newLevel
+            },
+          });
+
+          // 5. Historial de Puntos
+          if (pointsEarned > 0) {
+            await tx.pointsHistory.create({
+              data: { customerId: data.customerId, orderId: order.id, type: 'EARNED', points: pointsEarned },
+            });
+          }
+          if (pointsRedeemed > 0) {
+            await tx.pointsHistory.create({
+              data: { customerId: data.customerId, orderId: order.id, type: 'REDEEMED', points: pointsRedeemed },
+            });
+          }
+        }
       }
 
       // Costeo Inteligente: Descontar Inventario
