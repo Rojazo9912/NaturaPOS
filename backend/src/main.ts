@@ -1,37 +1,50 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import * as compression from 'compression';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
 
-  // Seguridad
-  app.use(helmet());
-  app.use(compression());
+  try {
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log'],
+    });
 
-  // CORS — Solo permite el frontend
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-  });
+    // Seguridad
+    app.use(helmet());
+    app.use(compression());
 
-  // Validación global de DTOs
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    // CORS
+    app.enableCors({
+      origin: process.env.FRONTEND_URL || '*',
+      credentials: true,
+    });
 
-  // Prefijo global de API
-  app.setGlobalPrefix('api/v1');
+    // Validación global de DTOs
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`🌿 Natural OS API corriendo en: http://localhost:${port}/api/v1`);
+    // Prefijo global de API
+    app.setGlobalPrefix('api/v1');
+
+    const port = process.env.PORT || 3001;
+
+    // Escuchar en 0.0.0.0 es crítico para Docker/Railway
+    await app.listen(port, '0.0.0.0');
+    logger.log(`🌿 Natural OS API corriendo en: http://0.0.0.0:${port}/api/v1`);
+  } catch (error) {
+    const logger = new Logger('Bootstrap');
+    logger.error('❌ Error al iniciar la aplicación:', error);
+    process.exit(1);
+  }
 }
 
 bootstrap();
+

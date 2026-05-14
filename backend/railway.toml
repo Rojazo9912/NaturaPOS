@@ -10,7 +10,3 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 60
-
-[[deploy.envs]]
-name = "PORT"
-value = "3001"

@@ -1,44 +1,44 @@
 # ─────────────────────────────────────────────
 # Natural OS — Dockerfile (Railway)
-# Multi-stage build para imagen optimizada
+# Multi-stage: build limpio + runner con node_modules completo
 # ─────────────────────────────────────────────
 
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copiar dependencias primero (cache layer)
+# Instalar dependencias (incluyendo dev para el build)
 COPY package*.json ./
 COPY prisma ./prisma/
-
 RUN npm ci
 
-# Copiar todo el código
-COPY . .
-
-# Generar Prisma Client
+# Generar Prisma Client (binarios para linux/amd64)
 RUN npx prisma generate
 
-# Build del proyecto
+# Copiar código y compilar
+COPY . .
 RUN npm run build
 
-# ─── Runner (imagen final ligera) ────────────
+# Eliminar dev dependencies (deja solo producción)
+RUN npm prune --production
 
-FROM node:20-alpine AS runner
+# ─── Runner (imagen final) ───────────────────
+
+FROM node:20-alpine
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Solo dependencias de producción
-COPY package*.json ./
-COPY prisma ./prisma/
-RUN npm ci --only=production
-
-# Copiar build y Prisma Client generado
+# Copiar build compilado
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copiar node_modules completo (ya prunado a producción + Prisma client generado)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copiar configs necesarios en runtime
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3001
 
