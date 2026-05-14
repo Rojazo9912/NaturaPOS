@@ -646,6 +646,7 @@ function AdminUsers() {
   const [users, setUsers] = useState<any[]>([])
   const [branches, setBranches] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'CASHIER', branchId: '', phone: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -657,8 +658,8 @@ function AdminUsers() {
       const [u, b] = await Promise.all([apiGetUsers(token), apiGetBranches(token)])
       setUsers(u)
       setBranches(b)
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      setLoadError(e.message || 'Error cargando usuarios — verifica que tengas rol ADMIN u OWNER')
     } finally {
       setLoading(false)
     }
@@ -683,14 +684,18 @@ function AdminUsers() {
     }
   }
 
-  if (loading) return <div>Cargando usuarios...</div>
-
   const selectedRole = ROLE_INFO[form.role]
 
   return (
     <div className="admin-grid">
       <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '20px' }}>Nuevo Usuario</h3>
+
+        {loadError && (
+          <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '12px', marginBottom: '16px' }}>
+            ⚠️ {loadError}
+          </div>
+        )}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <input required placeholder="Nombre Completo" className="input-dark" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} />
           <input required type="email" placeholder="Correo Electrónico" className="input-dark" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} />
@@ -746,40 +751,48 @@ function AdminUsers() {
       </div>
 
       <div style={{ background: 'var(--c-surface-1)', borderRadius: '16px', border: '1px solid var(--c-border)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-          <thead style={{ background: 'var(--c-surface-2)' }}>
-            <tr>
-              <th style={{ padding: '16px', fontSize: '13px' }}>Usuario</th>
-              <th style={{ padding: '16px', fontSize: '13px' }}>Rol</th>
-              <th style={{ padding: '16px', fontSize: '13px' }}>Sucursal</th>
-              <th style={{ padding: '16px', fontSize: '13px' }}>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map(u => (
-              <tr key={u.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
-                <td style={{ padding: '16px' }}>
-                  <div style={{ fontWeight: 600 }}>{u.name}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--c-text-muted)' }}>{u.email}</div>
-                </td>
-                <td style={{ padding: '16px' }}>
-                  <span style={{
-                    fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px',
-                    background: `${ROLE_INFO[u.role]?.color || '#555'}20`, color: ROLE_INFO[u.role]?.color || '#aaa'
-                  }}>
-                    {ROLE_INFO[u.role]?.label || u.role}
-                  </span>
-                </td>
-                <td style={{ padding: '16px', fontSize: '13px' }}>{u.branch?.name || '—'}</td>
-                <td style={{ padding: '16px' }}>
-                  <span style={{ fontSize: '11px', color: u.isActive ? '#22c55e' : '#ef4444' }}>
-                    {u.isActive ? '● Activo' : '● Inactivo'}
-                  </span>
-                </td>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--c-text-muted)', fontSize: '13px' }}>⏳ Cargando usuarios...</div>
+        ) : users.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--c-text-muted)', fontSize: '13px' }}>
+            👥 Aún no hay usuarios registrados. ¡Crea el primero con el formulario!
+          </div>
+        ) : (
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <thead style={{ background: 'var(--c-surface-2)' }}>
+              <tr>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Usuario</th>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Rol</th>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Sucursal</th>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Estado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <td style={{ padding: '16px' }}>
+                    <div style={{ fontWeight: 600 }}>{u.name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--c-text-muted)' }}>{u.email}</div>
+                  </td>
+                  <td style={{ padding: '16px' }}>
+                    <span style={{
+                      fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px',
+                      background: `${ROLE_INFO[u.role]?.color || '#555'}20`, color: ROLE_INFO[u.role]?.color || '#aaa'
+                    }}>
+                      {ROLE_INFO[u.role]?.label || u.role}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px', fontSize: '13px' }}>{u.branch?.name || '—'}</td>
+                  <td style={{ padding: '16px' }}>
+                    <span style={{ fontSize: '11px', color: u.isActive ? '#22c55e' : '#ef4444' }}>
+                      {u.isActive ? '● Activo' : '● Inactivo'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
