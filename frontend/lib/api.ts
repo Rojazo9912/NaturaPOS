@@ -243,6 +243,73 @@ export async function apiGetInventory(token: string): Promise<InventoryItem[]> {
   return res.json()
 }
 
+// ── Admin (Ingredients & Recipes) ──────────────────────
+export interface Ingredient {
+  id: string
+  name: string
+  unit: string
+  costPerUnit: number
+  minStock: number
+}
+
+export async function apiGetIngredients(token: string): Promise<Ingredient[]> {
+  const res = await fetch(`${API}/api/v1/inventory/ingredients`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando insumos')
+  return res.json()
+}
+
+export async function apiCreateIngredient(token: string, data: any) {
+  const res = await fetch(`${API}/api/v1/inventory/ingredients`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error creando insumo')
+  return res.json()
+}
+
+export async function apiUpsertRecipe(token: string, productId: string, data: any) {
+  const res = await fetch(`${API}/api/v1/products/${productId}/recipe`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error guardando receta')
+  return res.json()
+}
+
+export async function apiGetRecipe(token: string, productId: string) {
+  const res = await fetch(`${API}/api/v1/products/${productId}/recipe`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error('Error cargando receta')
+  const data = await res.json()
+  return data ? data : null
+}
+
+export async function apiCreateProduct(token: string, data: any) {
+  const res = await fetch(`${API}/api/v1/products`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error creando producto')
+  return res.json()
+}
+
+export async function apiUpdateProduct(token: string, id: string, data: any) {
+  const res = await fetch(`${API}/api/v1/products/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error actualizando producto')
+  return res.json()
+}
+
 // ── Token helpers (localStorage) ──────────────────────
 export const TOKEN_KEY = 'naturalos_token'
 export const USER_KEY  = 'naturalos_user'

@@ -192,6 +192,7 @@ export default function POSPage() {
             <a href="/cash-register" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>💰 Corte de Caja</a>
             <a href="/inventory" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>📦 Inventario</a>
             <a href="/dashboard" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>📊 Dashboard</a>
+            <a href="/admin" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>⚙️ Admin</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid var(--c-border)', paddingLeft: '12px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--c-green)', animation: 'pulse-green 2s infinite' }} />

@@ -29,14 +29,56 @@ export class ProductsService {
   }
 
   async update(id: string, organizationId: string, data: any) {
-    const product = await this.prisma.product.findFirst({
-      where: { id, organizationId },
-    });
-    if (!product) throw new NotFoundException('Product not found');
-
     return this.prisma.product.update({
-      where: { id },
+      where: { id, organizationId },
       data,
+    });
+  }
+
+  // ── RECIPES ──
+  async getRecipe(productId: string) {
+    return this.prisma.recipe.findUnique({
+      where: { productId },
+      include: {
+        items: {
+          include: { ingredient: true }
+        }
+      }
+    });
+  }
+
+  async upsertRecipe(productId: string, data: { yieldQty: number; items: { ingredientId: string; quantity: number; unit: string }[] }) {
+    // 1. Delete existing items if any
+    const existingRecipe = await this.prisma.recipe.findUnique({ where: { productId } });
+    if (existingRecipe) {
+      await this.prisma.recipeItem.deleteMany({ where: { recipeId: existingRecipe.id } });
+    }
+
+    // 2. Upsert Recipe & Create Items
+    return this.prisma.recipe.upsert({
+      where: { productId },
+      update: {
+        yieldQty: data.yieldQty,
+        items: {
+          create: data.items.map(item => ({
+            ingredientId: item.ingredientId,
+            quantity: item.quantity,
+            unit: item.unit as any, // Enum
+          }))
+        }
+      },
+      create: {
+        productId,
+        yieldQty: data.yieldQty,
+        items: {
+          create: data.items.map(item => ({
+            ingredientId: item.ingredientId,
+            quantity: item.quantity,
+            unit: item.unit as any,
+          }))
+        }
+      },
+      include: { items: true }
     });
   }
 }

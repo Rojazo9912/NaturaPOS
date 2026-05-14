@@ -1,0 +1,315 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  getToken,
+  apiGetProducts,
+  apiGetCategories,
+  apiGetIngredients,
+  apiCreateProduct,
+  apiUpdateProduct,
+  apiCreateIngredient,
+  apiUpsertRecipe,
+  apiGetRecipe,
+  type Product,
+  type Category,
+  type Ingredient
+} from '@/lib/api'
+
+export default function AdminPage() {
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES'>('PRODUCTS')
+  
+  // Data
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Load Data
+  const loadData = async () => {
+    const token = getToken()
+    if (!token) { router.replace('/login'); return }
+    setLoading(true)
+    try {
+      const [prods, cats, ings] = await Promise.all([
+        apiGetProducts(token),
+        apiGetCategories(token),
+        apiGetIngredients(token),
+      ])
+      setProducts(prods)
+      setCategories(cats)
+      setIngredients(ings)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadData() }, [])
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--c-bg)', fontFamily: 'inherit' }}>
+      {/* Header */}
+      <div style={{ background: 'var(--c-surface-1)', borderBottom: '1px solid var(--c-border)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--c-text)' }}>Panel de Administración</h1>
+          <p style={{ color: 'var(--c-text-muted)' }}>Gestión de Catálogo, Recetas e Insumos</p>
+        </div>
+        <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
+      </div>
+
+      <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: '1px solid var(--c-border)', paddingBottom: '16px' }}>
+          <button onClick={() => setActiveTab('PRODUCTS')} className={activeTab === 'PRODUCTS' ? 'btn-green' : 'btn-ghost'}>📦 Productos</button>
+          <button onClick={() => setActiveTab('INGREDIENTS')} className={activeTab === 'INGREDIENTS' ? 'btn-green' : 'btn-ghost'}>🌾 Insumos Base</button>
+          <button onClick={() => setActiveTab('RECIPES')} className={activeTab === 'RECIPES' ? 'btn-green' : 'btn-ghost'}>🧪 Recetas</button>
+        </div>
+
+        {loading ? (
+          <div>Cargando datos...</div>
+        ) : (
+          <div>
+            {activeTab === 'PRODUCTS' && <AdminProducts products={products} categories={categories} onReload={loadData} />}
+            {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} />}
+            {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} />}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── PRODUCTS TAB ───────────────────────────────────────────────────────────
+function AdminProducts({ products, categories, onReload }: { products: Product[], categories: Category[], onReload: () => void }) {
+  const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+    const token = getToken()
+    if (!token) return
+    setSubmitting(true)
+    try {
+      await apiCreateProduct(token, {
+        name: form.name,
+        price: Number(form.price),
+        categoryId: form.categoryId || undefined,
+        description: form.description,
+      })
+      setForm({ name: '', price: '', categoryId: '', description: '' })
+      onReload()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '32px' }}>
+      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+        <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Nuevo Producto</h3>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input className="input-dark" placeholder="Nombre" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} required />
+          <input className="input-dark" type="number" placeholder="Precio ($)" value={form.price} onChange={e=>setForm({...form, price: e.target.value})} required />
+          <select className="input-dark" value={form.categoryId} onChange={e=>setForm({...form, categoryId: e.target.value})}>
+            <option value="">Sin categoría</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+          </select>
+          <textarea className="input-dark" placeholder="Descripción" value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
+          <button type="submit" disabled={submitting} className="btn-green">Crear Producto</button>
+        </form>
+      </div>
+
+      <div style={{ background: 'var(--c-surface-1)', borderRadius: '16px', border: '1px solid var(--c-border)', overflow: 'hidden' }}>
+        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'var(--c-surface-2)' }}>
+            <tr>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Nombre</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Categoría</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Precio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map(p => (
+              <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                <td style={{ padding: '16px', fontWeight: 600 }}>{p.name}</td>
+                <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{p.category?.name || '-'}</td>
+                <td style={{ padding: '16px', color: 'var(--c-green)' }}>${p.price}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── INGREDIENTS TAB ────────────────────────────────────────────────────────
+function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[], onReload: () => void }) {
+  const [form, setForm] = useState({ name: '', unit: 'GRAM', costPerUnit: '', minStock: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+    const token = getToken()
+    if (!token) return
+    setSubmitting(true)
+    try {
+      await apiCreateIngredient(token, {
+        name: form.name,
+        unit: form.unit,
+        costPerUnit: Number(form.costPerUnit),
+        minStock: Number(form.minStock),
+      })
+      setForm({ name: '', unit: 'GRAM', costPerUnit: '', minStock: '' })
+      onReload()
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '32px' }}>
+      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+        <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Nuevo Insumo Base</h3>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input className="input-dark" placeholder="Nombre (ej. Proteína Whey)" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} required />
+          <select className="input-dark" value={form.unit} onChange={e=>setForm({...form, unit: e.target.value})}>
+            <option value="GRAM">Gramos (g)</option>
+            <option value="MILLILITER">Mililitros (ml)</option>
+            <option value="UNIT">Unidad (pza)</option>
+          </select>
+          <input className="input-dark" type="number" step="0.01" placeholder="Costo por unidad ($)" value={form.costPerUnit} onChange={e=>setForm({...form, costPerUnit: e.target.value})} required />
+          <input className="input-dark" type="number" placeholder="Stock mínimo alerta" value={form.minStock} onChange={e=>setForm({...form, minStock: e.target.value})} required />
+          <button type="submit" disabled={submitting} className="btn-green">Crear Insumo</button>
+        </form>
+      </div>
+
+      <div style={{ background: 'var(--c-surface-1)', borderRadius: '16px', border: '1px solid var(--c-border)', overflow: 'hidden' }}>
+        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'var(--c-surface-2)' }}>
+            <tr>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Insumo</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Unidad de Medida</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Costo/Unidad</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Alerta Min</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ingredients.map(i => (
+              <tr key={i.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                <td style={{ padding: '16px', fontWeight: 600 }}>{i.name}</td>
+                <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{i.unit}</td>
+                <td style={{ padding: '16px' }}>${i.costPerUnit}</td>
+                <td style={{ padding: '16px', color: '#ef4444' }}>{i.minStock}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── RECIPES TAB ────────────────────────────────────────────────────────────
+function AdminRecipes({ products, ingredients }: { products: Product[], ingredients: Ingredient[] }) {
+  const [selectedProduct, setSelectedProduct] = useState('')
+  const [recipeItems, setRecipeItems] = useState<{ingredientId: string, quantity: number}[]>([])
+  const [loadingRecipe, setLoadingRecipe] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Load recipe when product changes
+  useEffect(() => {
+    if (!selectedProduct) {
+      setRecipeItems([]); return
+    }
+    const token = getToken()
+    if (!token) return
+    setLoadingRecipe(true)
+    apiGetRecipe(token, selectedProduct).then(res => {
+      if (res && res.items) {
+        setRecipeItems(res.items.map((i: any) => ({ ingredientId: i.ingredientId, quantity: i.quantity })))
+      } else {
+        setRecipeItems([])
+      }
+    }).catch(console.error).finally(() => setLoadingRecipe(false))
+  }, [selectedProduct])
+
+  const handleAddItem = () => {
+    if (ingredients.length === 0) return
+    setRecipeItems([...recipeItems, { ingredientId: ingredients[0].id, quantity: 1 }])
+  }
+
+  const handleItemChange = (index: number, field: string, value: string) => {
+    const newItems = [...recipeItems]
+    newItems[index] = { ...newItems[index], [field]: field === 'quantity' ? Number(value) : value }
+    setRecipeItems(newItems)
+  }
+
+  const handleSave = async () => {
+    const token = getToken()
+    if (!token || !selectedProduct) return
+    setSaving(true)
+    try {
+      // Find units from ingredients array to pass to the backend
+      const itemsToSave = recipeItems.map(ri => {
+        const ing = ingredients.find(i => i.id === ri.ingredientId)
+        return { ingredientId: ri.ingredientId, quantity: ri.quantity, unit: ing?.unit || 'GRAM' }
+      })
+
+      await apiUpsertRecipe(token, selectedProduct, { yieldQty: 1, items: itemsToSave })
+      alert('Receta guardada exitosamente')
+    } catch (e) {
+      console.error(e)
+      alert('Error guardando receta')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--c-surface-1)', padding: '32px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--c-text-muted)' }}>Selecciona un Producto para editar su Receta</label>
+        <select className="input-dark" value={selectedProduct} onChange={e=>setSelectedProduct(e.target.value)} style={{ width: '300px', fontSize: '16px', padding: '12px' }}>
+          <option value="">-- Seleccionar --</option>
+          {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </div>
+
+      {selectedProduct && (
+        <div style={{ borderTop: '1px solid var(--c-border)', paddingTop: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Ingredientes de la Receta</h3>
+          
+          {loadingRecipe ? <div>Cargando receta...</div> : (
+            <div>
+              {recipeItems.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '16px', marginBottom: '12px', alignItems: 'center' }}>
+                  <select className="input-dark" value={item.ingredientId} onChange={e=>handleItemChange(idx, 'ingredientId', e.target.value)} style={{ flex: 1 }}>
+                    {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+                  </select>
+                  <input type="number" step="0.1" className="input-dark" value={item.quantity} onChange={e=>handleItemChange(idx, 'quantity', e.target.value)} style={{ width: '120px' }} />
+                  <button onClick={() => setRecipeItems(recipeItems.filter((_, i) => i !== idx))} style={{ background: 'transparent', color: '#ef4444', border: 'none', cursor: 'pointer', fontSize: '20px' }}>×</button>
+                </div>
+              ))}
+              
+              <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
+                <button onClick={handleAddItem} className="btn-ghost" style={{ border: '1px dashed var(--c-border)' }}>+ Agregar Insumo</button>
+                <button onClick={handleSave} disabled={saving} className="btn-green">
+                  {saving ? 'Guardando...' : '💾 Guardar Receta Completa'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -68,4 +68,36 @@ export class InventoryService {
     });
     return all.filter(item => item.quantity <= item.minStock);
   }
+
+  // ── INGREDIENTS (ORGANIZATION LEVEL) ──
+  async getIngredients(organizationId: string) {
+    return this.prisma.ingredient.findMany({
+      where: { organizationId, isActive: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async createIngredient(organizationId: string, data: any) {
+    return this.prisma.ingredient.create({
+      data: {
+        organizationId,
+        name: data.name,
+        unit: data.unit,
+        costPerUnit: data.costPerUnit,
+        minStock: data.minStock || 0,
+      },
+    });
+  }
+
+  async updateIngredient(id: string, organizationId: string, data: any) {
+    return this.prisma.ingredient.update({
+      where: { id, organizationId },
+      data: {
+        name: data.name,
+        unit: data.unit,
+        costPerUnit: data.costPerUnit,
+        minStock: data.minStock,
+      },
+    });
+  }
 }

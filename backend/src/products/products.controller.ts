@@ -31,4 +31,16 @@ export class ProductsController {
   update(@Param('id') id: string, @CurrentUser() user: any, @Body() updateProductDto: any) {
     return this.productsService.update(id, user.organizationId, updateProductDto);
   }
+
+  // ── RECIPES ──
+  @Get(':id/recipe')
+  getRecipe(@Param('id') id: string) {
+    return this.productsService.getRecipe(id);
+  }
+
+  @Post(':id/recipe')
+  @Roles('ADMIN', 'OWNER')
+  upsertRecipe(@Param('id') id: string, @Body() dto: any) {
+    return this.productsService.upsertRecipe(id, dto);
+  }
 }
