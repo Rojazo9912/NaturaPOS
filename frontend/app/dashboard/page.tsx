@@ -52,53 +52,37 @@ export default function DashboardPage() {
   const maxHourRevenue = Math.max(...salesByHour.map(h => h.revenue), 1)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--c-bg)', fontFamily: 'inherit' }}>
+    <div className="min-h-screen bg-black font-sans">
 
       {/* Header */}
-      <header style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 28px', height: '60px',
-        background: 'var(--c-surface-1)', borderBottom: '1px solid var(--c-border)',
-        position: 'sticky', top: 0, zIndex: 10,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '34px', height: '34px', borderRadius: '10px',
-            background: 'linear-gradient(135deg, var(--c-green), var(--c-lime-dark))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px',
-          }}>🌿</div>
-          <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--c-text)' }}>Natural OS</span>
-          <span style={{ fontSize: '13px', color: 'var(--c-text-muted)', paddingLeft: '10px', borderLeft: '1px solid var(--c-border)' }}>
+      <header className="flex items-center justify-between px-4 md:px-7 h-15 bg-zinc-950 border-b border-zinc-900 sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-linear-to-br from-green-500 to-lime-600 flex items-center justify-center text-lg md:text-xl">🌿</div>
+          <span className="font-bold text-base text-white hide-mobile">Natural OS</span>
+          <span className="text-xs text-zinc-500 pl-2.5 border-l border-zinc-800 hide-mobile">
             Dashboard Ejecutivo
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <a href="/pos" style={{
-            padding: '7px 14px', borderRadius: 'var(--r-md)', fontSize: '13px', fontWeight: 600,
-            background: 'var(--c-green)', color: '#000', textDecoration: 'none',
-          }}>💳 Ir al POS</a>
+        <div className="flex gap-3 items-center">
+          <a href="/pos" className="px-3.5 py-1.5 rounded-md text-xs font-semibold bg-green-500 text-black no-underline hover:brightness-110">💳 Ir al POS</a>
           <button onClick={() => { clearSession(); router.push('/login') }}
-            style={{ fontSize: '12px', color: 'var(--c-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            className="text-xs text-zinc-500 bg-transparent border-none cursor-pointer hover:text-white">
             Salir
           </button>
         </div>
       </header>
 
-      <main style={{ padding: '28px', maxWidth: '1400px', margin: '0 auto' }}>
+      <main className="p-4 md:p-7 max-w-7xl mx-auto space-y-6">
 
         {loading && (
-          <div style={{ textAlign: 'center', padding: '80px', color: 'var(--c-text-muted)' }}>
-            <div style={{ fontSize: '40px', marginBottom: '16px' }}>⏳</div>
+          <div className="text-center py-20 text-zinc-500">
+            <div className="text-4xl mb-4">⏳</div>
             <div>Cargando métricas...</div>
           </div>
         )}
 
         {error && (
-          <div style={{
-            padding: '20px 24px', borderRadius: 'var(--r-lg)',
-            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-            color: '#ef4444', marginBottom: '24px',
-          }}>
+          <div className="p-5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 mb-6">
             ⚠️ {error} — Las métricas se calcularán una vez que haya ventas registradas.
           </div>
         )}
@@ -106,25 +90,23 @@ export default function DashboardPage() {
         {!loading && summary && (
           <>
             {userRole === 'OWNER' && (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-                <button onClick={() => setView('BRANCH')} className={view === 'BRANCH' ? 'btn-green' : 'btn-ghost'} style={{ fontSize: '13px' }}>🏪 Esta Sucursal</button>
-                <button onClick={() => setView('FRANCHISE')} className={view === 'FRANCHISE' ? 'btn-green' : 'btn-ghost'} style={{ fontSize: '13px' }}>🏢 Modo Franquicia</button>
+              <div className="flex gap-2 mb-6">
+                <button onClick={() => setView('BRANCH')} className={view === 'BRANCH' ? 'btn-green px-4 py-1.5' : 'btn-ghost px-4 py-1.5'} style={{ fontSize: '13px' }}>🏪 Esta Sucursal</button>
+                <button onClick={() => setView('FRANCHISE')} className={view === 'FRANCHISE' ? 'btn-green px-4 py-1.5' : 'btn-ghost px-4 py-1.5'} style={{ fontSize: '13px' }}>🏢 Modo Franquicia</button>
               </div>
             )}
 
             {view === 'FRANCHISE' ? (
-              <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--c-text)', marginBottom: '20px' }}>📊 Comparativo de Ventas — Hoy</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              <div className="animate-fadeIn">
+                <h3 className="text-lg font-bold text-white mb-5">📊 Comparativo de Ventas — Hoy</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {franchiseData.map(b => (
-                    <div key={b.branchId} style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', borderRadius: 'var(--r-xl)', padding: '24px' }}>
-                      <div style={{ fontSize: '14px', color: 'var(--c-text-muted)', marginBottom: '8px' }}>{b.name}</div>
-                      <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--c-green)' }}>{fmt(b.salesToday)}</div>
-                      <div style={{ fontSize: '13px', color: 'var(--c-text-muted)', marginTop: '8px' }}>{b.ordersToday} órdenes hoy</div>
-                      <div style={{ height: '6px', background: 'var(--c-surface-2)', borderRadius: '3px', marginTop: '16px', overflow: 'hidden' }}>
-                        <div style={{ 
-                          height: '100%', 
-                          background: 'var(--c-green)', 
+                    <div key={b.branchId} className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6">
+                      <div className="text-sm text-zinc-400 mb-2">{b.name}</div>
+                      <div className="text-3xl font-black text-green-500">{fmt(b.salesToday)}</div>
+                      <div className="text-xs text-zinc-500 mt-2">{b.ordersToday} órdenes hoy</div>
+                      <div className="h-1.5 bg-zinc-900 rounded-full mt-4 overflow-hidden">
+                        <div className="h-full bg-green-500 transition-all duration-1000" style={{ 
                           width: franchiseData[0].salesToday > 0 ? (b.salesToday / franchiseData[0].salesToday * 100) + '%' : '0%' 
                         }} />
                       </div>
@@ -135,11 +117,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 {/* KPI Cards */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: '16px', marginBottom: '28px',
-                }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-7">
                   {[
                     { label: 'Ventas Hoy',        value: fmt(summary.salesToday),    sub: `${summary.ordersToday} órdenes`, emoji: '💰', color: '#22c55e' },
                     { label: 'Ventas Semana',     value: fmt(summary.salesWeek),     sub: 'Últimos 7 días',                emoji: '📅', color: '#3b82f6' },
@@ -148,111 +126,73 @@ export default function DashboardPage() {
                     { label: 'Total Clientes',    value: summary.totalCustomers.toString(), sub: 'Base CRM',              emoji: '👥', color: '#ec4899' },
                     { label: 'Órdenes Hoy',       value: summary.ordersToday.toString(), sub: 'En esta sucursal',         emoji: '📊', color: '#14b8a6' },
                   ].map(card => (
-                    <div key={card.label} style={{
-                      background: 'var(--c-surface-1)', border: '1px solid var(--c-border)',
-                      borderRadius: 'var(--r-xl)', padding: '20px 22px',
-                      transition: 'var(--t-mid)',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '13px', color: 'var(--c-text-muted)', fontWeight: 500 }}>{card.label}</span>
-                        <span style={{
-                          fontSize: '22px', width: '40px', height: '40px', borderRadius: '12px',
-                          background: `${card.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>{card.emoji}</span>
+                    <div key={card.label} className="bg-zinc-950 border border-zinc-900 rounded-2xl p-5 hover:border-zinc-800 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{card.label}</span>
+                        <span className="text-xl w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">{card.emoji}</span>
                       </div>
-                      <div style={{ fontSize: '26px', fontWeight: 800, color: card.color, fontVariantNumeric: 'tabular-nums' }}>
+                      <div className="text-2xl font-black text-white tabular-nums">
                         {card.value}
                       </div>
-                      <div style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginTop: '4px' }}>{card.sub}</div>
+                      <div className="text-[11px] text-zinc-500 mt-1">{card.sub}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Charts Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '20px', marginBottom: '28px' }}>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-7">
 
                   {/* Sales by Hour Bar Chart */}
-                  <div style={{
-                    background: 'var(--c-surface-1)', border: '1px solid var(--c-border)',
-                    borderRadius: 'var(--r-xl)', padding: '24px',
-                  }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--c-text)', marginBottom: '20px' }}>
+                  <div className="lg:col-span-2 bg-zinc-950 border border-zinc-900 rounded-2xl p-6">
+                    <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider opacity-60">
                       📈 Ventas por Hora — Hoy
                     </h3>
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '160px' }}>
+                    <div className="flex items-end gap-1.5 md:gap-2 h-40">
                       {salesByHour.map(h => {
                         const heightPct = (h.revenue / maxHourRevenue) * 100
                         const isActive  = h.revenue > 0
                         return (
-                          <div key={h.hour} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: '4px' }}>
+                          <div key={h.hour} className="flex-1 flex flex-col items-center h-full justify-end gap-1.5">
                             <div
                               title={`${h.hour}:00 — ${fmt(h.revenue)} (${h.orders} órdenes)`}
-                              style={{
-                                width: '100%', borderRadius: '4px 4px 0 0',
-                                height: `${Math.max(isActive ? heightPct : 2, 2)}%`,
-                                background: isActive
-                                  ? 'linear-gradient(180deg, var(--c-green), var(--c-lime-dark))'
-                                  : 'var(--c-surface-2)',
-                                transition: 'height 0.6s ease',
-                                cursor: isActive ? 'pointer' : 'default',
-                              }}
+                              className={`w-full rounded-t-sm transition-all duration-700 ${
+                                isActive ? 'bg-linear-to-b from-green-400 to-green-600 cursor-pointer hover:brightness-125' : 'bg-zinc-900'
+                              }`}
+                              style={{ height: `${Math.max(isActive ? heightPct : 2, 2)}%` }}
                             />
-                            <span style={{ fontSize: '9px', color: 'var(--c-text-muted)' }}>{h.hour}</span>
+                            <span className="text-[9px] text-zinc-600 font-medium">{h.hour}</span>
                           </div>
                         )
                       })}
                     </div>
-                    <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--c-text-muted)', textAlign: 'center' }}>
-                      Horas del día (6am – 10pm). Pasa el cursor sobre las barras para ver detalle.
-                    </div>
                   </div>
 
                   {/* Top Products */}
-                  <div style={{
-                    background: 'var(--c-surface-1)', border: '1px solid var(--c-border)',
-                    borderRadius: 'var(--r-xl)', padding: '24px',
-                  }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--c-text)', marginBottom: '20px' }}>
+                  <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6">
+                    <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-wider opacity-60">
                       🏆 Top Productos — 30 días
                     </h3>
                     {topProds.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '30px', color: 'var(--c-text-muted)', fontSize: '13px' }}>
-                        Aún no hay datos de ventas.<br />Empieza a vender desde el POS.
+                      <div className="text-center py-8 text-zinc-600 text-xs">
+                        No hay datos aún.
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {topProds.slice(0, 6).map((p, i) => (
-                          <div key={p.productId} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{
-                              width: '24px', height: '24px', borderRadius: '6px', flexShrink: 0,
-                              background: i < 3 ? 'rgba(245,158,11,0.2)' : 'var(--c-surface-2)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '12px', fontWeight: 700, color: i < 3 ? '#f59e0b' : 'var(--c-text-muted)',
-                            }}>{i + 1}</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {p.name}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
-                                <div style={{
-                                  height: '4px', borderRadius: '2px', background: 'var(--c-surface-2)',
-                                  flex: 1, overflow: 'hidden',
-                                }}>
-                                  <div style={{
-                                    height: '100%', borderRadius: '2px',
-                                    background: 'linear-gradient(90deg, var(--c-green), var(--c-lime-dark))',
-                                    width: pct(p.totalRevenue, topProds[0].totalRevenue),
-                                    transition: 'width 0.8s ease',
-                                  }} />
+                      <div className="space-y-4">
+                        {topProds.slice(0, 5).map((p, i) => (
+                          <div key={p.productId} className="flex items-center gap-3">
+                            <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black ${
+                              i < 3 ? 'bg-orange-500/10 text-orange-500' : 'bg-zinc-900 text-zinc-500'
+                            }`}>{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-zinc-200 truncate">{p.name}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="h-1 bg-zinc-900 rounded-full flex-1 overflow-hidden">
+                                  <div className="h-full bg-green-500 rounded-full" style={{ width: pct(p.totalRevenue, topProds[0].totalRevenue) }} />
                                 </div>
-                                <span style={{ fontSize: '11px', color: 'var(--c-text-muted)', whiteSpace: 'nowrap' }}>
-                                  {p.totalQty} uds
-                                </span>
+                                <span className="text-[10px] text-zinc-600 whitespace-nowrap">{p.totalQty} uds</span>
                               </div>
                             </div>
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--c-green)', whiteSpace: 'nowrap' }}>
-                              {fmt(p.totalRevenue)}
-                            </span>
+                            <span className="text-xs font-black text-green-500 whitespace-nowrap">{fmt(p.totalRevenue)}</span>
                           </div>
                         ))}
                       </div>
@@ -261,19 +201,15 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Quick Stats Footer */}
-                <div style={{
-                  background: 'var(--c-surface-1)', border: '1px solid var(--c-border)',
-                  borderRadius: 'var(--r-xl)', padding: '20px 24px',
-                  display: 'flex', gap: '32px', flexWrap: 'wrap',
-                }}>
+                <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6 flex flex-col md:flex-row gap-6 md:gap-10">
                   {[
-                    { label: 'Tasa de conversión (hoy)', value: summary.ordersToday > 0 ? '100%' : '—' },
+                    { label: 'Tasa de conversión', value: summary.ordersToday > 0 ? '100%' : '—' },
                     { label: 'Ingresos vs semana', value: summary.salesWeek > 0 ? fmt(summary.salesWeek / 7) + '/día' : '—' },
                     { label: 'Ingresos vs mes', value: summary.salesMonth > 0 ? fmt(summary.salesMonth / 30) + '/día' : '—' },
                   ].map(stat => (
                     <div key={stat.label}>
-                      <div style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '4px' }}>{stat.label}</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--c-text)' }}>{stat.value}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">{stat.label}</div>
+                      <div className="text-lg font-black text-white">{stat.value}</div>
                     </div>
                   ))}
                 </div>

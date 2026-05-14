@@ -78,104 +78,158 @@ export default function CashRegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--c-bg)', fontFamily: 'inherit', padding: '40px' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-black font-sans p-4 md:p-10">
+      <div className="max-w-5xl mx-auto">
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--c-text)' }}>Corte de Caja (Dual)</h1>
-            <p style={{ color: 'var(--c-text-muted)' }}>Gestión de caja y cortes administrativos vs fiscales</p>
+            <h1 className="text-2xl md:text-3xl font-black text-white">Corte de Caja (Dual)</h1>
+            <p className="text-sm text-zinc-500 mt-1">Gestión de caja y cortes administrativos vs fiscales</p>
           </div>
-          <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
+          <a href="/pos" className="btn-ghost px-5 py-2 text-sm no-underline inline-flex items-center gap-2">
+            <span>💳</span> Volver al POS
+          </a>
         </div>
 
         {error && (
-          <div style={{ padding: '16px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderRadius: '8px', marginBottom: '24px' }}>
-            {error}
+          <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 mb-6 animate-fadeIn">
+            ⚠️ {error}
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
           {/* Active Register Panel */}
-          <div style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', borderRadius: 'var(--r-xl)', padding: '28px' }}>
-            {loading ? <div>Cargando...</div> : !activeReg ? (
+          <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-6 md:p-8">
+            {loading ? (
+              <div className="text-center py-10 text-zinc-600 animate-pulse">Cargando estado de caja...</div>
+            ) : !activeReg ? (
               // OPEN REGISTER
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '20px', color: 'var(--c-text)' }}>🔴 Caja Cerrada</h2>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '8px' }}>Fondo de caja inicial</label>
-                  <input type="number" value={openingAmount} onChange={e => setOpeningAmount(e.target.value)}
-                         placeholder="$0.00" className="input-dark" style={{ width: '100%', fontSize: '18px', padding: '12px' }} />
+              <div className="animate-fadeIn">
+                <div className="flex items-center gap-3 mb-6">
+                  <span className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]"></span>
+                  <h2 className="text-xl font-bold text-white">Caja Cerrada</h2>
                 </div>
-                <button onClick={handleOpen} disabled={submitting || !openingAmount} className="btn-green" style={{ width: '100%', padding: '14px' }}>
-                  {submitting ? 'Abriendo...' : 'Abrir Caja'}
-                </button>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Fondo de caja inicial</label>
+                    <input 
+                      type="number" 
+                      value={openingAmount} 
+                      onChange={e => setOpeningAmount(e.target.value)}
+                      placeholder="$0.00" 
+                      className="input-dark w-full text-2xl p-4 font-black text-green-500" 
+                    />
+                  </div>
+                  <button 
+                    onClick={handleOpen} 
+                    disabled={submitting || !openingAmount} 
+                    className="btn-green w-full py-4 text-base shadow-xl shadow-green-500/10"
+                  >
+                    {submitting ? 'Abriendo...' : 'ABRIR CAJA'}
+                  </button>
+                </div>
               </div>
             ) : (
               // CLOSE REGISTER
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px', color: 'var(--c-green)' }}>🟢 Caja Abierta</h2>
-                <p style={{ fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '24px' }}>
-                  Abierta a las: {new Date(activeReg.openedAt).toLocaleTimeString('es-MX')}
-                  <br/>Fondo inicial: {fmt(activeReg.openingAmount)}
+              <div className="animate-fadeIn">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse shadow-[0_0_12px_rgba(34,197,94,0.5)]"></span>
+                  <h2 className="text-xl font-bold text-white">Caja Abierta</h2>
+                </div>
+                <p className="text-xs text-zinc-500 mb-8 border-l-2 border-zinc-800 pl-3">
+                  Desde: <span className="text-zinc-300 font-medium">{new Date(activeReg.openedAt).toLocaleTimeString('es-MX')}</span>
+                  <br/>Fondo: <span className="text-green-500 font-bold">{fmt(activeReg.openingAmount)}</span>
                 </p>
 
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '8px' }}>Efectivo físico en caja al cierre</label>
-                  <input type="number" value={closingAmount} onChange={e => setClosingAmount(e.target.value)}
-                         placeholder="$0.00" className="input-dark" style={{ width: '100%', fontSize: '18px', padding: '12px' }} />
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Efectivo físico al cierre</label>
+                    <input 
+                      type="number" 
+                      value={closingAmount} 
+                      onChange={e => setClosingAmount(e.target.value)}
+                      placeholder="$0.00" 
+                      className="input-dark w-full text-2xl p-4 font-black text-green-500" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Notas (opcional)</label>
+                    <textarea 
+                      value={notes} 
+                      onChange={e => setNotes(e.target.value)}
+                      className="input-dark w-full min-h-[100px] p-3 text-sm" 
+                      placeholder="Reportar incidencias o motivos de diferencia..."
+                    />
+                  </div>
+                  
+                  <button 
+                    onClick={handleClose} 
+                    disabled={submitting || !closingAmount} 
+                    className="btn-green w-full py-4 text-base"
+                  >
+                    {submitting ? 'Cerrando...' : 'REALIZAR CORTE DE CAJA'}
+                  </button>
+                  <p className="text-[10px] text-zinc-600 text-center uppercase tracking-widest font-medium">
+                    Se generará automáticamente Corte A (Real) y B (Fiscal).
+                  </p>
                 </div>
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '8px' }}>Notas o justificaciones (opcional)</label>
-                  <textarea value={notes} onChange={e => setNotes(e.target.value)}
-                            className="input-dark" style={{ width: '100%', minHeight: '80px' }} />
-                </div>
-                
-                <button onClick={handleClose} disabled={submitting || !closingAmount} className="btn-green" style={{ width: '100%', padding: '14px', background: 'var(--c-surface-3)', borderColor: 'var(--c-border)' }}>
-                  {submitting ? 'Cerrando...' : 'Realizar Corte de Caja'}
-                </button>
-                <p style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginTop: '12px', textAlign: 'center' }}>
-                  Esto generará automáticamente el Corte A (Real) y el Corte B (Fiscal).
-                </p>
               </div>
             )}
           </div>
 
           {/* History Panel */}
-          <div style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', borderRadius: 'var(--r-xl)', padding: '28px', overflowY: 'auto', maxHeight: '600px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '20px', color: 'var(--c-text)' }}>Historial de Cortes</h2>
-            {history.length === 0 ? (
-              <p style={{ color: 'var(--c-text-muted)', fontSize: '13px' }}>No hay historial reciente.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {history.map(h => (
-                  <div key={h.id} style={{ background: 'var(--c-surface-2)', padding: '16px', borderRadius: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{new Date(h.openedAt).toLocaleDateString('es-MX')}</span>
-                      <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: h.status === 'CLOSED' ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)', color: h.status === 'CLOSED' ? '#22c55e' : '#f59e0b' }}>
-                        {h.status}
+          <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-6 md:p-8 flex flex-col">
+            <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <span>📋</span> Historial de Cortes
+            </h2>
+            <div className="flex-1 overflow-y-auto max-h-[500px] space-y-4 pr-1 no-scrollbar">
+              {history.length === 0 ? (
+                <div className="text-center py-20 text-zinc-700">
+                  <div className="text-4xl mb-2 opacity-10">📜</div>
+                  <div className="text-xs uppercase tracking-widest">Sin historial</div>
+                </div>
+              ) : (
+                history.map(h => (
+                  <div key={h.id} className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-4 hover:bg-zinc-900 transition-colors">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="text-sm font-bold text-zinc-200">{new Date(h.openedAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-black tracking-widest uppercase ${
+                        h.status === 'CLOSED' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'
+                      }`}>
+                        {h.status === 'CLOSED' ? 'Cerrada' : 'Abierta'}
                       </span>
                     </div>
+                    
                     {h.status === 'CLOSED' && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '13px' }}>
-                        <div style={{ color: 'var(--c-text-muted)' }}>Esperado: <span style={{ color: 'var(--c-text)' }}>{fmt(h.expectedAmount || 0)}</span></div>
-                        <div style={{ color: 'var(--c-text-muted)' }}>Físico: <span style={{ color: 'var(--c-text)' }}>{fmt(h.closingAmount || 0)}</span></div>
-                        <div style={{ gridColumn: '1/-1', color: (h.difference || 0) < 0 ? '#ef4444' : '#22c55e', fontWeight: 600 }}>
-                          Diferencia: {fmt(h.difference || 0)}
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-1">
+                          <div className="text-[9px] uppercase tracking-widest text-zinc-600">Sistema</div>
+                          <div className="text-sm font-bold text-zinc-300">{fmt(h.expectedAmount || 0)}</div>
+                        </div>
+                        <div className="space-y-1 text-right">
+                          <div className="text-[9px] uppercase tracking-widest text-zinc-600">Físico</div>
+                          <div className="text-sm font-bold text-white">{fmt(h.closingAmount || 0)}</div>
+                        </div>
+                        <div className="col-span-full pt-2 border-t border-zinc-800/50 flex justify-between items-center">
+                          <span className="text-[10px] text-zinc-500 uppercase font-medium">Diferencia</span>
+                          <span className={`text-sm font-black ${ (h.difference || 0) < 0 ? 'text-red-500' : (h.difference || 0) > 0 ? 'text-blue-500' : 'text-green-500'}`}>
+                            {fmt(h.difference || 0)}
+                          </span>
                         </div>
                       </div>
                     )}
+                    
                     {h.cuts && h.cuts.length > 0 && (
-                       <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--c-border)', display: 'flex', gap: '8px' }}>
-                         <span style={{ fontSize: '11px', background: '#3b82f640', color: '#60a5fa', padding: '2px 6px', borderRadius: '4px' }}>Corte A: {fmt(h.cuts.find(c=>c.type==='ADMIN')?.totalSales || 0)}</span>
-                         <span style={{ fontSize: '11px', background: '#8b5cf640', color: '#c084fc', padding: '2px 6px', borderRadius: '4px' }}>Corte B: Generado</span>
+                       <div className="flex gap-2 pt-3 border-t border-zinc-800/50 overflow-x-auto no-scrollbar">
+                         <span className="text-[9px] font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded-md whitespace-nowrap">CORTE A: {fmt(h.cuts.find(c=>c.type==='ADMIN')?.totalSales || 0)}</span>
+                         <span className="text-[9px] font-bold bg-purple-500/10 text-purple-400 px-2 py-1 rounded-md whitespace-nowrap">CORTE B: GENERADO</span>
                        </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </div>
 
         </div>

@@ -147,20 +147,23 @@ html, body {
   display: flex;
   flex-direction: row;
   height: calc(100vh - 60px);
+  overflow: hidden;
 }
 
 .pos-catalog {
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .pos-cart {
-  width: 350px;
+  width: 380px;
   background: var(--c-surface-1);
   border-left: 1px solid var(--c-border);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .admin-grid {
@@ -175,26 +178,94 @@ html, body {
   gap: 32px;
 }
 
+/* Grid utilities */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+/* Modal responsive */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal-content {
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  padding: 28px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: fadeIn 0.3s ease;
+}
+
 /* Mobile Breakpoint */
+@media (max-width: 1024px) {
+  .pos-cart { width: 320px; }
+}
+
 @media (max-width: 768px) {
   .pos-layout {
     flex-direction: column;
     height: auto;
-    min-height: calc(100vh - 60px);
+    overflow: visible;
+  }
+
+  .pos-catalog {
+    height: auto;
+    overflow: visible;
   }
 
   .pos-cart {
     width: 100%;
+    height: auto;
     border-left: none;
     border-top: 1px solid var(--c-border);
-    order: -1; /* Cart at the top on mobile for quick visibility, or bottom depending on preference */
+    position: sticky;
+    bottom: 0;
+    max-height: 80vh;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    z-index: 50;
+  }
+  
+  .pos-cart-header {
+    cursor: pointer;
+    padding: 12px !important;
   }
 
-  .admin-grid {
-    grid-template-columns: 1fr;
+  .grid-responsive {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
   }
 
-  .admin-split {
+  .admin-grid, .admin-split {
     grid-template-columns: 1fr;
   }
+  
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: block !important; }
+  
+  header {
+    padding: 0 16px !important;
+  }
+  
+  main {
+    padding: 16px !important;
+  }
+}
+
+.modal-overlay {
+  background: rgba(0,0,0,0.9);
 }

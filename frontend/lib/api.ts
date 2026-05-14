@@ -201,8 +201,8 @@ export async function apiGetActiveRegister(token: string): Promise<CashRegister 
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error('Error buscando caja')
-  const data = await res.json()
-  return data ? data : null
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 export async function apiOpenRegister(token: string, openingAmount: number): Promise<CashRegister> {

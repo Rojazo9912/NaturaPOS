@@ -55,6 +55,7 @@ export default function POSPage() {
   const [plans, setPlans]           = useState<any[]>([])
   const [showSubModal, setShowSubModal] = useState(false)
   const [submittingSub, setSubmittingSub] = useState(false)
+  const [mobileCartOpen, setMobileCartOpen] = useState(false)
 
   // Catalog state
   const [products, setProducts]       = useState<Product[]>([])
@@ -199,50 +200,30 @@ export default function POSPage() {
   }
 
   // ── Styles ────────────────────────────────────────
-  const S = {
-    wrap:   { display: 'flex', flexDirection: 'column' as const, height: '100vh', background: 'var(--c-bg)' },
-    header: {
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 20px', height: '56px', flexShrink: 0,
-      background: 'var(--c-surface-1)', borderBottom: '1px solid var(--c-border)',
-    },
-    main:  { display: 'flex', flex: 1, overflow: 'hidden' },
-    left:  { flex: 1, display: 'flex', flexDirection: 'column' as const, borderRight: '1px solid var(--c-border)', overflow: 'hidden' },
-    right: { width: '380px', display: 'flex', flexDirection: 'column' as const, background: 'var(--c-surface-1)' },
-  }
-
   return (
-    <div style={S.wrap}>
+    <div className="flex flex-col h-screen bg-black overflow-hidden">
 
       {/* ── Header ── */}
-      <header style={S.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '8px',
-            background: 'linear-gradient(135deg, var(--c-green), var(--c-lime-dark))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-          }}>🌿</div>
-          <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--c-text)' }}>Natural OS</span>
-          <span style={{ fontSize: '12px', color: 'var(--c-text-muted)', paddingLeft: '8px', borderLeft: '1px solid var(--c-border)' }}>
+      <header className="flex items-center justify-between px-4 h-14 shrink-0 bg-zinc-950 border-b border-zinc-900 sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-green-500 to-lime-600 flex items-center justify-center text-lg">🌿</div>
+          <span className="font-bold text-sm text-white hide-mobile">Natural OS</span>
+          <span className="text-xs text-zinc-500 pl-2 border-l border-zinc-800 hide-mobile">
             {user?.name ? `Cajero: ${user.name}` : 'POS'}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--c-green)', fontVariantNumeric: 'tabular-nums' }}>
+
+        <div className="flex items-center gap-4 md:gap-6">
+          <span className="text-xl font-bold text-green-500 tabular-nums">
             {time}
           </span>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <a href="/cash-register" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>💰 Corte de Caja</a>
-            <a href="/inventory" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>📦 Inventario</a>
-            <a href="/dashboard" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>📊 Dashboard</a>
-            <a href="/admin" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>⚙️ Admin</a>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderLeft: '1px solid var(--c-border)', paddingLeft: '12px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--c-green)', animation: 'pulse-green 2s infinite' }} />
-            <span style={{ fontSize: '13px', color: 'var(--c-text-secondary)' }}>{user?.name || 'Cajero'}</span>
+          <div className="flex gap-3 md:gap-4 hide-mobile">
+            <a href="/cash-register" className="text-xs text-zinc-400 no-underline hover:text-green-500">💰 Caja</a>
+            <a href="/inventory" className="text-xs text-zinc-400 no-underline hover:text-green-500">📦 Stock</a>
+            <a href="/dashboard" className="text-xs text-zinc-400 no-underline hover:text-green-500">📊 Dashboard</a>
           </div>
           <button onClick={() => { clearSession(); router.push('/login') }}
-            style={{ fontSize: '12px', color: 'var(--c-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            className="text-xs text-zinc-500 bg-transparent border-none cursor-pointer hover:text-red-400">
             Salir
           </button>
         </div>
@@ -254,25 +235,23 @@ export default function POSPage() {
         <div className="pos-catalog">
 
           {/* Search + Categories */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border)', flexShrink: 0 }}>
+          <div className="p-3 md:p-4 border-b border-zinc-900 shrink-0">
             <input
               id="pos-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="🔍  Buscar producto..."
-              className="input-dark"
-              style={{ width: '100%', padding: '10px 14px', fontSize: '14px', marginBottom: '10px' }}
+              className="input-dark w-full p-2.5 text-sm mb-3"
             />
-            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
               {catList.map(c => (
-                <button key={c.id} onClick={() => setCategory(c.id)}
-                  style={{
-                    flexShrink: 0, padding: '6px 12px', borderRadius: 'var(--r-full)',
-                    fontSize: '13px', fontWeight: 500, cursor: 'pointer', border: 'none',
-                    background: category === c.id ? 'var(--c-green)' : 'var(--c-surface-2)',
-                    color: category === c.id ? '#000' : 'var(--c-text-secondary)',
-                    transition: 'var(--t-mid)',
-                  }}>
+                <button 
+                  key={c.id} 
+                  onClick={() => setCategory(c.id)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border-none cursor-pointer transition-all ${
+                    category === c.id ? 'bg-green-500 text-black' : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                  }`}
+                >
                   {c.emoji} {c.name}
                 </button>
               ))}
@@ -280,43 +259,22 @@ export default function POSPage() {
           </div>
 
           {/* Product Grid */}
-          <div style={{
-            flex: 1, overflowY: 'auto', padding: '12px 16px',
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px',
-            alignContent: 'start',
-          }}>
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 grid-responsive align-content-start">
             {catalogLoading ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: 'var(--c-text-muted)' }}>
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+              <div className="col-span-full text-center py-12 text-zinc-500">
+                <div className="text-3xl mb-3 animate-pulse">⏳</div>
                 Cargando catálogo...
               </div>
             ) : filtered.map(p => (
-              <button key={p.id} onClick={() => addToCart(p)}
-                style={{
-                  background: 'var(--c-surface-2)', border: '1px solid var(--c-border)',
-                  borderRadius: 'var(--r-lg)', padding: '16px 12px', cursor: 'pointer',
-                  textAlign: 'center', transition: 'var(--t-mid)', display: 'flex',
-                  flexDirection: 'column', alignItems: 'center', gap: '6px',
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget
-                  el.style.borderColor = 'var(--c-green)'
-                  el.style.background = 'var(--c-surface-3)'
-                  el.style.transform = 'translateY(-2px)'
-                  el.style.boxShadow = '0 4px 16px rgba(34,197,94,0.15)'
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget
-                  el.style.borderColor = 'var(--c-border)'
-                  el.style.background = 'var(--c-surface-2)'
-                  el.style.transform = 'translateY(0)'
-                  el.style.boxShadow = 'none'
-                }}
+              <button 
+                key={p.id} 
+                onClick={() => addToCart(p)}
+                className="bg-zinc-950 border border-zinc-900 rounded-xl p-4 cursor-pointer text-center flex flex-col items-center gap-2 transition-all hover:border-green-500 hover:bg-zinc-900 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/10 group"
               >
-                <span style={{ fontSize: '30px' }}>{p.category?.emoji ?? '📦'}</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text)', lineHeight: 1.3 }}>{p.name}</span>
-                <span style={{ fontSize: '11px', color: 'var(--c-text-muted)', lineHeight: 1.3 }}>{p.description ?? ''}</span>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--c-green)', marginTop: '4px' }}>{fmt(p.price)}</span>
+                <span className="text-3xl group-hover:scale-110 transition-transform">{p.category?.emoji ?? '📦'}</span>
+                <span className="text-xs font-bold text-white line-clamp-2 leading-tight">{p.name}</span>
+                <span className="text-[10px] text-zinc-500 line-clamp-1 h-3">{p.description ?? ''}</span>
+                <span className="text-sm font-black text-green-500 mt-1">{fmt(p.price)}</span>
               </button>
             ))}
             {!catalogLoading && filtered.length === 0 && (
@@ -327,136 +285,128 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: Cart ── */}
-        <div className="pos-cart">
+        {/* Right: Cart */}
+        <div className={`pos-cart ${mobileCartOpen ? 'active' : ''}`}>
+          
+          {/* Cart Header (Click to toggle on mobile) */}
+          <div 
+            className="pos-cart-header shrink-0 flex items-center justify-between border-b border-zinc-900 bg-zinc-900/50"
+            onClick={() => setMobileCartOpen(!mobileCartOpen)}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🛒</span>
+              <span className="font-bold text-sm text-white">Carrito ({cart.length})</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-green-500">{fmt(subtotal)}</span>
+              <span className="show-mobile text-zinc-500">{mobileCartOpen ? '▼' : '▲'}</span>
+            </div>
+          </div>
 
-          {/* Customer Search */}
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--c-border)', flexShrink: 0 }}>
+          {/* Customer Search (Sticky at top of cart) */}
+          <div className="p-3 border-b border-zinc-900 shrink-0">
             <input
               id="customer-phone"
               value={phoneQuery}
               onChange={e => setPhoneQuery(e.target.value.replace(/\D/g, ''))}
               placeholder="📱 Teléfono del cliente..."
-              className="input-dark"
-              style={{ width: '100%', padding: '10px 14px', fontSize: '14px' }}
+              className="input-dark w-full p-2.5 text-sm"
               maxLength={10}
             />
             {customerLoading && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>Buscando...</div>
+              <div className="mt-2 text-xs text-zinc-500 animate-pulse">Buscando...</div>
             )}
             {!customerLoading && customer && (
               <>
-                <div style={{
-                  marginTop: '10px', padding: '12px 14px', borderRadius: 'var(--r-md)',
-                  background: 'var(--c-surface-2)', border: `1px solid ${LEVEL_COLORS[customer.level] ?? '#333'}40`,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  animation: 'fadeIn 0.2s ease',
-                }}>
+                <div className="mt-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 flex justify-between items-center animate-fadeIn">
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text)' }}>{customer.name}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>
+                    <div className="text-sm font-bold text-white">{customer.name}</div>
+                    <div className="text-[11px] text-zinc-400">
                       ⭐ {customer.points.toFixed(0)} pts · {customer.totalVisits} visitas
                     </div>
                   </div>
-                  <span style={{
-                    padding: '3px 10px', borderRadius: 'var(--r-full)', fontSize: '11px', fontWeight: 700,
-                    background: `${LEVEL_COLORS[customer.level] ?? '#555'}20`, color: LEVEL_COLORS[customer.level] ?? '#aaa',
-                  }}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black bg-zinc-800 text-zinc-300`}>
                     {customer.level}
                   </span>
                 </div>
-                <button onClick={handleOpenSubModal} className="btn-ghost"
-                        style={{ width: '100%', marginTop: '10px', fontSize: '11px', padding: '6px', color: 'var(--c-green)', borderColor: 'var(--c-green-glow)' }}>
+                <button onClick={handleOpenSubModal} className="btn-ghost w-full mt-2 py-1.5 text-[10px] text-green-500 border-green-500/30">
                   ⭐ Gestionar Suscripción (Plan Recovery)
                 </button>
               </>
             )}
-            {!customerLoading && phoneQuery.length >= 6 && !customer && (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>
-                Cliente no encontrado
-              </div>
-            )}
           </div>
 
           {/* Cart Items */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {cart.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--c-text-muted)' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🛒</div>
-                <div style={{ fontSize: '14px' }}>El carrito está vacío</div>
-                <div style={{ fontSize: '12px', marginTop: '4px' }}>Agrega productos desde el catálogo</div>
+              <div className="text-center py-12 text-zinc-600">
+                <div className="text-4xl mb-3 opacity-20">🛒</div>
+                <div className="text-sm">El carrito está vacío</div>
               </div>
             ) : cart.map(item => (
-              <div key={item.id} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '10px 0', borderBottom: '1px solid var(--c-border)',
-              }}>
-                <span style={{ fontSize: '20px' }}>{item.category?.emoji ?? '📦'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.name}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--c-green)', fontWeight: 600 }}>{fmt(item.price)}</div>
+              <div key={item.id} className="flex gap-3 items-center group">
+                <div className="w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center text-xl shrink-0 group-hover:bg-zinc-800 transition-colors">
+                  {item.category?.emoji ?? '📦'}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                  <button onClick={() => updateQty(item.id, -1)} className="btn-ghost"
-                    style={{ width: '26px', height: '26px', padding: 0, fontSize: '16px', borderRadius: 'var(--r-sm)' }}>−</button>
-                  <span style={{ width: '20px', textAlign: 'center', fontSize: '14px', fontWeight: 600 }}>{item.qty}</span>
-                  <button onClick={() => updateQty(item.id, +1)} className="btn-ghost"
-                    style={{ width: '26px', height: '26px', padding: 0, fontSize: '16px', borderRadius: 'var(--r-sm)' }}>+</button>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-white truncate">{item.name}</div>
+                  <div className="text-xs text-zinc-500">{fmt(item.price)} c/u</div>
                 </div>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--c-text)', width: '56px', textAlign: 'right' }}>
-                  {fmt(item.price * item.qty)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">-</button>
+                  <span className="text-sm font-bold w-4 text-center text-white">{item.qty}</span>
+                  <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">+</button>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Summary + Cobrar */}
-          <div style={{ padding: '14px 16px', borderTop: '1px solid var(--c-border)', flexShrink: 0 }}>
-            {customer && discount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px' }}>
-                <span style={{ color: 'var(--c-text-muted)' }}>Descuento cliente (5%)</span>
-                <span style={{ color: 'var(--c-green)' }}>−{fmt(discount)}</span>
+          {/* Cart Footer / Checkout */}
+          <div className="p-4 bg-zinc-950 border-t border-zinc-900 space-y-4 shrink-0">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-zinc-500">
+                <span>Subtotal</span>
+                <span>{fmt(subtotal)}</span>
               </div>
-            )}
-            {customer && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '12px' }}>
-                <span style={{ color: 'var(--c-text-muted)' }}>Natural Points a ganar</span>
-                <span style={{ color: '#f59e0b' }}>+{pointsEarned} pts</span>
+              {discount > 0 && (
+                <div className="flex justify-between text-xs text-green-500">
+                  <span>Descuento (Nivel)</span>
+                  <span>−{fmt(discount)}</span>
+                </div>
+              )}
+              {redeemed > 0 && (
+                <div className="flex justify-between text-xs text-orange-500">
+                  <span>Puntos redimidos</span>
+                  <span>−{fmt(redeemed)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-zinc-900">
+                <span className="text-base font-bold text-white">Total</span>
+                <span className="text-xl font-black text-green-500">{fmt(finalTotal)}</span>
               </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--c-text)' }}>TOTAL</span>
-              <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--c-green)' }}>{fmt(finalTotal)}</span>
             </div>
 
-            {/* Payment method pills */}
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <div className="grid grid-cols-5 gap-2">
               {PAYMENT_METHODS.map(m => (
-                <button key={m.id} onClick={() => setPaymentMethod(m.id)}
-                  style={{
-                    flex: 1, padding: '8px 4px', fontSize: '12px', fontWeight: 600,
-                    borderRadius: 'var(--r-md)', cursor: 'pointer', border: '1px solid',
-                    borderColor: paymentMethod === m.id ? 'var(--c-green)' : 'var(--c-border)',
-                    background: paymentMethod === m.id ? 'var(--c-green-glow)' : 'transparent',
-                    color: paymentMethod === m.id ? 'var(--c-green)' : 'var(--c-text-muted)',
-                    transition: 'var(--t-fast)',
-                  }}>
-                  {m.emoji}<br />{m.label}
+                <button
+                  key={m.id}
+                  onClick={() => setPaymentMethod(m.id)}
+                  title={m.label}
+                  className={`py-3 rounded-lg text-lg flex items-center justify-center transition-all ${
+                    paymentMethod === m.id ? 'bg-green-500 border-none scale-105 shadow-lg shadow-green-500/20' : 'bg-zinc-900 border border-zinc-800 grayscale opacity-60'
+                  }`}
+                >
+                  {m.emoji}
                 </button>
               ))}
             </div>
 
-            <button id="btn-cobrar" onClick={() => cart.length > 0 && setShowPayModal(true)}
+            <button
+              onClick={() => setShowPayModal(true)}
+              className="btn-green w-full py-4 text-base tracking-wide"
               disabled={cart.length === 0}
-              className="btn-green"
-              style={{
-                width: '100%', padding: '16px', fontSize: '17px', borderRadius: 'var(--r-lg)',
-                opacity: cart.length === 0 ? 0.4 : 1,
-                cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
-              }}>
-              💳 COBRAR {fmt(finalTotal)}
+            >
+              <span>💳 COBRAR {fmt(finalTotal)}</span>
             </button>
           </div>
         </div>
