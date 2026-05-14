@@ -146,6 +146,15 @@ export async function apiGetDashboardSummary(token: string): Promise<DashboardSu
   return res.json()
 }
 
+export async function apiGetDashboardFranchise(token: string) {
+  const res = await fetch(`${API}/api/v1/dashboard/franchise`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando métricas de franquicia')
+  return res.json()
+}
+
+
 export async function apiGetTopProducts(token: string): Promise<TopProduct[]> {
   const res = await fetch(`${API}/api/v1/dashboard/top-products`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -382,4 +391,53 @@ export async function apiCreateSubscriptionPlan(token: string, data: any) {
   if (!res.ok) throw new Error('Error creando plan de suscripción')
   return res.json()
 }
+
+export async function apiSubscribeCustomer(token: string, customerId: string, planId: string) {
+  const res = await fetch(`${API}/api/v1/subscriptions/customers/${customerId}/subscribe`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId }),
+  })
+  if (!res.ok) throw new Error('Error al suscribir cliente')
+  return res.json()
+}
+
+// ── Transfers ──────────────────────
+export async function apiGetTransfers(token: string) {
+  const res = await fetch(`${API}/api/v1/transfers`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando transferencias')
+  return res.json()
+}
+
+export async function apiGetTransferBranches(token: string) {
+  const res = await fetch(`${API}/api/v1/transfers/branches`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando sucursales')
+  return res.json()
+}
+
+export async function apiCreateTransfer(token: string, data: any) {
+  const res = await fetch(`${API}/api/v1/transfers`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error creando transferencia')
+  return res.json()
+}
+
+export async function apiUpdateTransferStatus(token: string, id: string, status: string) {
+  const res = await fetch(`${API}/api/v1/transfers/${id}/status`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error('Error actualizando estado de transferencia')
+  return res.json()
+}
+
+
 

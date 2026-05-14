@@ -76,10 +76,12 @@ Lo siguiente en la lista son las "Killer Features" que separan a Natural OS de u
 - ✅ Dashboard de Seguridad: Creada la pestaña "🛡️ Auditoría Antifugas" en el Panel Administrativo para revisar logs y resolver alertas.
 
 ### 5. Modo Franquicia y Suscripciones (Fases 4.5 y 5)
-- UI para visualizar métricas comparativas entre sucursales.
-- Transferencia de inventario entre sucursales (`InventoryTransfer`).
-- Suscripciones "Plan Recovery" (cobro recurrente a clientes).
+- ✅ Suscripciones "Plan Recovery" (Planes creados en el Dashboard, listos para integrarse con clientes).
+- ✅ UI para vincular clientes a suscripciones en el POS.
+- ✅ UI para visualizar métricas comparativas entre sucursales (Modo Franquicia en Dashboard).
+- ✅ Transferencia de inventario entre sucursales (`InventoryTransfer`).
 
+---
 ---
 
 ## 🔧 Variables de Entorno (Producción - Railway)

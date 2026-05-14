@@ -98,4 +98,30 @@ export class DashboardService {
 
     return Object.entries(byHour).map(([hour, data]) => ({ hour: Number(hour), ...data }));
   }
+
+  async getFranchiseSummary(organizationId: string) {
+    const branches = await this.prisma.branch.findMany({
+      where: { organizationId, isActive: true },
+      select: { id: true, name: true },
+    });
+
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+
+    const summaries = await Promise.all(branches.map(async (b) => {
+      const orders = await this.prisma.order.findMany({
+        where: { branchId: b.id, status: 'COMPLETED', createdAt: { gte: since } },
+        select: { total: true },
+      });
+
+      return {
+        branchId: b.id,
+        name: b.name,
+        salesToday: orders.reduce((s, o) => s + o.total, 0),
+        ordersToday: orders.length,
+      };
+    }));
+
+    return summaries.sort((a, b) => b.salesToday - a.salesToday);
+  }
 }

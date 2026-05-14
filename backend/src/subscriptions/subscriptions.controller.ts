@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards, Param } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('api/v1/subscriptions')

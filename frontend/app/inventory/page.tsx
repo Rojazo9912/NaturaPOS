@@ -27,7 +27,10 @@ export default function InventoryPage() {
             <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--c-text)' }}>Inventario y Costeo Inteligente</h1>
             <p style={{ color: 'var(--c-text-muted)' }}>Gestión de stock en tiempo real</p>
           </div>
-          <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <a href="/inventory/transfers" className="btn-ghost" style={{ textDecoration: 'none', color: 'var(--c-green)' }}>📦 Transferencias</a>
+            <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
+          </div>
         </div>
 
         <div style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', borderRadius: 'var(--r-xl)', overflow: 'hidden' }}>

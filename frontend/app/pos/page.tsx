@@ -6,6 +6,7 @@ import {
   getToken, getUser, clearSession,
   apiGetProducts, apiGetCategories,
   apiSearchCustomers, apiCreateOrder,
+  apiGetSubscriptionPlans, apiSubscribeCustomer,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 
@@ -49,6 +50,11 @@ export default function POSPage() {
   const [pointsToRedeem, setPointsToRedeem] = useState('')
   const [paying, setPaying]         = useState(false)
   const [payError, setPayError]     = useState('')
+
+  // Subscription state
+  const [plans, setPlans]           = useState<any[]>([])
+  const [showSubModal, setShowSubModal] = useState(false)
+  const [submittingSub, setSubmittingSub] = useState(false)
 
   // Catalog state
   const [products, setProducts]       = useState<Product[]>([])
@@ -120,6 +126,34 @@ export default function POSPage() {
     (p.name.toLowerCase().includes(search.toLowerCase()) ||
       (p.description ?? '').toLowerCase().includes(search.toLowerCase()))
   )
+
+  const handleOpenSubModal = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const p = await apiGetSubscriptionPlans(token)
+      setPlans(p)
+      setShowSubModal(true)
+    } catch (e) {
+      alert('Error al cargar planes')
+    }
+  }
+
+  const handleSubscribe = async (planId: string) => {
+    if (!customer) return
+    const token = getToken()
+    if (!token) return
+    setSubmittingSub(true)
+    try {
+      await apiSubscribeCustomer(token, customer.id, planId)
+      alert('¡Cliente suscrito con éxito!')
+      setShowSubModal(false)
+    } catch (e) {
+      alert('Error al suscribir')
+    } finally {
+      setSubmittingSub(false)
+    }
+  }
 
   async function handlePay() {
     const token = getToken()
@@ -330,6 +364,10 @@ export default function POSPage() {
                   {customer.level}
                 </span>
               </div>
+              <button onClick={handleOpenSubModal} className="btn-ghost"
+                      style={{ width: '100%', marginTop: '10px', fontSize: '11px', padding: '6px', color: 'var(--c-green)', borderColor: 'var(--c-green-glow)' }}>
+                ⭐ Gestionar Suscripción (Plan Recovery)
+              </button>
             )}
             {!customerLoading && phoneQuery.length >= 6 && !customer && (
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>
@@ -525,6 +563,42 @@ export default function POSPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Modal */}
+      {showSubModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '450px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>Planes Recovery</h3>
+            <p style={{ fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '20px' }}>
+              Suscribe a <strong>{customer?.name}</strong> para activar beneficios recurrentes.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              {plans.map(p => (
+                <div key={p.id} style={{ 
+                  background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '16px',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--c-green)' }}>{p.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>
+                      ${p.price} / {p.intervalDays} días
+                    </div>
+                  </div>
+                  <button onClick={() => handleSubscribe(p.id)} className="btn-green" style={{ padding: '6px 16px', fontSize: '12px' }} disabled={submittingSub}>
+                    {submittingSub ? '...' : 'Suscribir'}
+                  </button>
+                </div>
+              ))}
+              {plans.length === 0 && <div style={{ textAlign: 'center', color: 'var(--c-text-muted)' }}>No hay planes disponibles.</div>}
+            </div>
+
+            <button onClick={() => setShowSubModal(false)} className="btn-ghost" style={{ width: '100%', padding: '12px' }}>
+              Cerrar
+            </button>
           </div>
         </div>
       )}

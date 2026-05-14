@@ -22,4 +22,9 @@ export class DashboardController {
   getSalesByHour(@CurrentUser() user: any) {
     return this.dashboardService.getSalesByHour(user.branchId);
   }
+
+  @Get('franchise')
+  getFranchise(@CurrentUser() user: any) {
+    return this.dashboardService.getFranchiseSummary(user.organizationId);
+  }
 }
