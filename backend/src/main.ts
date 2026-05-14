@@ -10,6 +10,7 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log'],
+      rawBody: true,
     });
 
     // Seguridad
@@ -40,9 +41,11 @@ async function bootstrap() {
     // Escuchar en 0.0.0.0 es crítico para Docker/Railway
     await app.listen(port, '0.0.0.0');
     logger.log(`🌿 Natural OS API corriendo en: http://0.0.0.0:${port}/api/v1`);
-  } catch (error) {
+  } catch (error: any) {
     const logger = new Logger('Bootstrap');
-    logger.error('❌ Error al iniciar la aplicación:', error);
+    logger.error('❌ Error fatal en bootstrap:');
+    logger.error(error.message);
+    logger.error(error.stack);
     process.exit(1);
   }
 }
