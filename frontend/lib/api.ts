@@ -119,6 +119,7 @@ export async function apiCreateCustomer(token: string, data: { name: string; pho
 export async function apiCreateOrder(token: string, data: {
   customerId?: string
   subtotal: number
+  discountAmount?: number
   total: number
   items: Array<{ productId: string; quantity: number; unitPrice: number; subtotal: number }>
   payments: Array<{ method: string; amount: number }>
