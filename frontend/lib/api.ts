@@ -161,6 +161,88 @@ export async function apiGetSalesByHour(token: string) {
   return res.json()
 }
 
+// ── Cash Register ────────────────────────────────────────
+export interface CashRegister {
+  id: string
+  branchId: string
+  userId: string
+  openedAt: string
+  closedAt: string | null
+  openingAmount: number
+  closingAmount: number | null
+  expectedAmount: number | null
+  difference: number | null
+  status: string
+  notes: string | null
+  cuts?: FinancialCut[]
+}
+
+export interface FinancialCut {
+  id: string
+  type: string
+  totalSales: number
+  totalCash: number
+  totalCard: number
+  grossProfit: number
+}
+
+export async function apiGetActiveRegister(token: string): Promise<CashRegister | null> {
+  const res = await fetch(`${API}/api/v1/cash-register/active`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error buscando caja')
+  const data = await res.json()
+  return data ? data : null
+}
+
+export async function apiOpenRegister(token: string, openingAmount: number): Promise<CashRegister> {
+  const res = await fetch(`${API}/api/v1/cash-register/open`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ openingAmount }),
+  })
+  if (!res.ok) throw new Error('Error al abrir caja')
+  return res.json()
+}
+
+export async function apiCloseRegister(token: string, id: string, closingAmount: number, notes?: string) {
+  const res = await fetch(`${API}/api/v1/cash-register/${id}/close`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ closingAmount, notes }),
+  })
+  if (!res.ok) throw new Error('Error al cerrar caja')
+  return res.json()
+}
+
+export async function apiGetRegisterHistory(token: string): Promise<CashRegister[]> {
+  const res = await fetch(`${API}/api/v1/cash-register/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando historial de caja')
+  return res.json()
+}
+
+// ── Inventory ────────────────────────────────────────
+export interface InventoryItem {
+  id: string
+  branchId: string
+  productId: string | null
+  ingredientId: string | null
+  quantity: number
+  minStock: number
+  product?: { id: string; name: string }
+  ingredient?: { id: string; name: string; unit: string }
+}
+
+export async function apiGetInventory(token: string): Promise<InventoryItem[]> {
+  const res = await fetch(`${API}/api/v1/inventory`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando inventario')
+  return res.json()
+}
+
 // ── Token helpers (localStorage) ──────────────────────
 export const TOKEN_KEY = 'naturalos_token'
 export const USER_KEY  = 'naturalos_user'
@@ -187,3 +269,4 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
 }
+

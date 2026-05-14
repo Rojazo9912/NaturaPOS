@@ -72,6 +72,77 @@ export class OrdersService {
         });
       }
 
+      // Costeo Inteligente: Descontar Inventario
+      for (const item of data.items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          include: { recipe: { include: { items: true } } },
+        });
+
+        if (product?.recipe) {
+          // Descontar insumos basados en la receta
+          for (const rItem of product.recipe.items) {
+            const qtyToDeduct = rItem.quantity * item.quantity;
+            
+            // Upsert inventory to deduct
+            const currentInv = await tx.branchInventory.findUnique({
+              where: { branchId_ingredientId: { branchId: user.branchId, ingredientId: rItem.ingredientId } }
+            });
+            
+            if (currentInv) {
+              await tx.branchInventory.update({
+                where: { id: currentInv.id },
+                data: { quantity: { decrement: qtyToDeduct } },
+              });
+            } else {
+              await tx.branchInventory.create({
+                data: { branchId: user.branchId, ingredientId: rItem.ingredientId, quantity: -qtyToDeduct },
+              });
+            }
+
+            await tx.inventoryMovement.create({
+              data: {
+                branchId: user.branchId,
+                ingredientId: rItem.ingredientId,
+                type: 'SALE',
+                quantity: qtyToDeduct,
+                reason: `Venta orden ${order.orderNumber}`,
+                userId: user.id,
+                orderId: order.id,
+              },
+            });
+          }
+        } else {
+          // Descontar producto directo (ej. agua embotellada, snacks)
+          const currentInv = await tx.branchInventory.findUnique({
+            where: { branchId_productId: { branchId: user.branchId, productId: item.productId } }
+          });
+          
+          if (currentInv) {
+            await tx.branchInventory.update({
+              where: { id: currentInv.id },
+              data: { quantity: { decrement: item.quantity } },
+            });
+          } else {
+            await tx.branchInventory.create({
+              data: { branchId: user.branchId, productId: item.productId, quantity: -item.quantity },
+            });
+          }
+
+          await tx.inventoryMovement.create({
+            data: {
+              branchId: user.branchId,
+              productId: item.productId,
+              type: 'SALE',
+              quantity: item.quantity,
+              reason: `Venta orden ${order.orderNumber}`,
+              userId: user.id,
+              orderId: order.id,
+            },
+          });
+        }
+      }
+
       return order;
     });
   }
