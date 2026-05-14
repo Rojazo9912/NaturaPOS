@@ -2,10 +2,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
-import * as otplib from 'otplib';
 import * as QRCode from 'qrcode';
 
-const { authenticator } = otplib as any;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { authenticator } = require('otplib');
 
 @Injectable()
 export class AuthService {
