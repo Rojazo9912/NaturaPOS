@@ -42,263 +42,76 @@ Role:     OWNER
 
 ---
 
-## 📁 Estructura del Repositorio
+## ✅ Estado Actual (Fase 1 - MVP completado al 80%)
 
-```
-NaturaPOS/
-├── backend/                    # NestJS API
-│   ├── src/
-│   │   ├── app.module.ts
-│   │   ├── app.controller.ts   # GET /api/v1/health
-│   │   ├── auth/               # JWT + Passport + RBAC
-│   │   │   ├── guards/         # JwtAuthGuard, LocalAuthGuard, RolesGuard
-│   │   │   ├── decorators/     # @Roles(), @CurrentUser()
-│   │   │   ├── strategies/     # jwt.strategy, local.strategy
-│   │   │   └── dto/login.dto.ts
-│   │   └── prisma/
-│   │       ├── prisma.module.ts
-│   │       └── prisma.service.ts
-│   ├── prisma/
-│   │   ├── schema.prisma       # 18 modelos
-│   │   └── seed.ts             # Org + Admin + Categorías
-│   ├── prisma.config.ts        # Prisma v7 config con dotenv
-│   ├── Dockerfile
-│   ├── railway.toml
-│   ├── tsconfig.json           # rootDir: ./src, module: commonjs
-│   └── tsconfig.build.json     # exclude: prisma, test, node_modules
-│
-└── frontend/                   # Next.js 16
-    ├── app/
-    │   ├── globals.css         # Design system (CSS vars + animaciones)
-    │   ├── layout.tsx          # Inter font via next/font/google
-    │   ├── page.tsx            # Redirect a /pos
-    │   ├── login/page.tsx      # Login (dark mode split layout)
-    │   └── pos/page.tsx        # POS completo (datos mock por ahora)
-    ├── lib/api.ts              # fetch helpers + auth localStorage
-    ├── Dockerfile              # next build standalone
-    ├── railway.toml
-    └── next.config.ts          # output: "standalone"
-```
+En las últimas sesiones logramos implementar toda la infraestructura core y la conexión real Frontend-Backend. 
+
+### ✅ Módulos Implementados y Funcionando
+- **Autenticación (JWT + RBAC)**: Login, verificación de sesión, roles (CASHIER, OWNER, etc).
+- **Catálogo de Productos**: API de productos/categorías. Catálogo poblado (18 productos reales).
+- **POS Inteligente**: Búsqueda de clientes por teléfono (CRM), carrito, cálculo de totales, integración de puntos, 5 métodos de pago y creación de órdenes transaccionales.
+- **Costeo Inteligente (Inventario)**: Cada venta descuenta automáticamente del inventario (sea producto directo o los insumos de una receta).
+- **Corte de Caja (Dual)**: UI y lógica para abrir caja, registrar cierre, calcular diferencia física vs esperada y generar el Corte A (Real/Administrativo) y Corte B (Fiscal).
+- **Dashboard Ejecutivo**: Vista `dashboard` con KPIs de ventas, ticket promedio, ventas por hora y Top Productos.
+- **CORS & Despliegue**: Arreglo de CORS por "trailing slash" (`/`), y correcto manejo del `PORT` dinámico en Railway.
 
 ---
 
-## 🗄️ Modelos de BD (schema.prisma)
+## 🚀 Próximos Módulos a Implementar (Fase 2 y 3)
 
-| Modelo | Descripción |
-|---|---|
-| `Organization` | Empresa raíz (multi-tenant) |
-| `Branch` | Sucursales |
-| `User` | Roles: OWNER, ADMIN, MANAGER, CASHIER, VIEWER |
-| `Customer` | CRM (niveles: VERDE, GOLD, ELITE, LEGEND) |
-| `CustomerLevel` | Config de niveles y beneficios |
-| `Product` | Catálogo |
-| `Category` | Categorías de productos |
-| `Order` | Ventas |
-| `OrderItem` | Items de venta |
-| `Payment` | Métodos: CASH, CARD, TRANSFER, WALLET, QR |
-| `Inventory` | Stock |
-| `InventoryMovement` | Movimientos de stock |
-| `Subscription` | Suscripciones del negocio |
-| `AuditLog` | Auditoría (antifugas) |
-| `RiskAlert` | Alertas de riesgo |
-| `Notification` | Notificaciones |
-| `DashboardConfig` | Dashboards |
-| `PointsTransaction` | Puntos de fidelidad |
+Lo siguiente en la lista son las "Killer Features" que separan a Natural OS de un POS convencional.
 
----
+### 1. Panel Administrativo (CRUD) — PRIORIDAD ALTA
+*Actualmente los productos, usuarios y recetas están en BD, pero no hay una UI para gestionarlos.*
+- UI para **Gestión de Catálogo**: Crear/Editar productos, precios y categorías.
+- UI para **Gestión de Recetas**: Asignar qué ingredientes y cantidades componen cada producto (para el costeo inteligente).
+- UI para **Insumos/Ingredientes**: Agregar kilos de proteína, litros de leche, etc., al inventario.
 
-## 🔌 Endpoints Implementados
+### 2. Motor Completo de Lealtad (Natural Points)
+*Actualmente se ganan puntos, pero falta la lógica compleja.*
+- Lógica de canjeo de puntos (`PaymentMethod = POINTS`).
+- Cambios automáticos de Nivel (`CustomerLevel`: Verde -> Gold -> Elite) según visitas/gastos.
 
-```
-GET  /api/v1/health          → { status: "ok", timestamp }
-POST /api/v1/auth/login      → { access_token, user }
-GET  /api/v1/auth/me         → user profile  [Bearer token requerido]
-```
+### 3. Motor Antifugas y Auditoría (Seguridad Empresarial)
+- Implementar el `AuditLog` en cada acción sensible (ej. cancelar orden, editar precio).
+- Lógica de `RiskAlert`: Asignar un `RiskScore` a los empleados si hacen descuentos manuales seguidos o tienen descuadres constantes en el Corte de Caja.
 
-**Login request:**
-```json
-{ "email": "admin@naturalbynutrit.com", "password": "NaturaAdmin2026!" }
-```
+### 4. Modo Franquicia (Multi-Sucursal)
+- UI para visualizar métricas comparativas entre sucursales.
+- Transferencia de inventario entre sucursales (`InventoryTransfer`).
 
-**Login response:**
-```json
-{
-  "access_token": "eyJ...",
-  "user": { "id": "uuid", "name": "Admin Natural", "email": "...", "role": "OWNER", "organizationId": "uuid" }
-}
-```
+### 5. Suscripciones y Recurrencia
+- Crear la UI y backend para el "Plan Recovery" (cobro recurrente a clientes y asignación de "Smoothies gratis por mes").
 
 ---
 
-## ✅ Estado Actual
+## 🔧 Variables de Entorno (Producción - Railway)
 
-### ✅ Completado
-- [x] BD con 18 modelos, migrada en Supabase
-- [x] Seed con organización + sucursal + admin + categorías
-- [x] Auth completo: JWT, Guards, RBAC (@Roles, @CurrentUser)
-- [x] Backend desplegado en Railway (**verificar que no siga en 502 después del redeploy**)
-- [x] Frontend POS: login + catálogo (18 productos mock) + carrito + 5 métodos de pago
-- [x] Frontend desplegado en Railway (https://naturapos.up.railway.app)
-
-### ⚠️ Pendiente inmediato
-- [ ] **Agregar variable en Railway Frontend:**
-  ```
-  NEXT_PUBLIC_API_URL = https://naturapos-production.up.railway.app
-  ```
-  *(Esto dispara un redeploy automático con la URL del backend bakeada)*
-- [ ] Verificar que el backend levante correctamente (estaba en 502 al momento del handoff)
-- [ ] Probar login en producción end-to-end
-
----
-
-## 🚀 Próximos Módulos a Implementar
-
-### 1. Módulo Productos (Backend) — PRIORIDAD ALTA
-```
-GET  /api/v1/products                 # lista con filtros
-GET  /api/v1/products/categories      # categorías
-POST /api/v1/products                 # crear (ADMIN+)
-PUT  /api/v1/products/:id             # actualizar
-```
-Crear: `backend/src/products/products.module.ts|service.ts|controller.ts`
-
-### 2. Módulo Órdenes (Backend) — PRIORIDAD ALTA
-```
-POST /api/v1/orders    # crear orden (valida stock, descuentos, puntos)
-GET  /api/v1/orders    # listar órdenes del día
-```
-Lógica: descontar inventario + registrar pago + sumar puntos al cliente
-
-### 3. Módulo Clientes (Backend) — PRIORIDAD ALTA
-```
-GET  /api/v1/customers/search?phone=xxx   # buscar por teléfono
-POST /api/v1/customers                    # registrar
-GET  /api/v1/customers/:id                # perfil + historial
-```
-
-### 4. Conectar POS Frontend al Backend Real
-En `frontend/app/pos/page.tsx`:
-- Reemplazar `MOCK_CUSTOMERS` → `GET /api/v1/customers/search`
-- Reemplazar `MOCK_PRODUCTS` → `GET /api/v1/products`
-- Conectar "COBRAR" → `POST /api/v1/orders`
-
-### 5. Dashboard
-```
-GET /api/v1/dashboard/summary       # ventas día/semana/mes
-GET /api/v1/dashboard/top-products  # más vendidos
-```
-Página `/dashboard` en el frontend
-
----
-
-## 🔧 Variables de Entorno
-
-### Backend (Railway Variables)
+### Backend
 ```env
-DATABASE_URL=postgresql://postgres.wharpdcmezvvkhfzvhbf:NaturaPos2026@aws-1-us-west-1.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://...
 JWT_SECRET=naturalos-secret-prod-2026
 NODE_ENV=production
 FRONTEND_URL=https://naturapos.up.railway.app
-PORT=3001
+# PORT=8080 (Se deja que Railway lo asigne automáticamente, NUNCA setear PORT manualmente en backend panel)
 ```
 
-### Frontend (Railway Variables) — FALTA AGREGAR ESTO
+### Frontend
 ```env
 NEXT_PUBLIC_API_URL=https://naturapos-production.up.railway.app
 NODE_ENV=production
-PORT=3000
-```
-
-### Backend Local (`backend/.env`)
-```env
-DATABASE_URL="postgresql://postgres.wharpdcmezvvkhfzvhbf:NaturaPos2026@aws-1-us-west-1.pooler.supabase.com:5432/postgres"
-JWT_SECRET="change-this-secret-in-production"
-NODE_ENV=development
-PORT=3001
-FRONTEND_URL="http://localhost:3000"
 ```
 
 ---
 
-## ⚠️ Problemas Conocidos y Soluciones
+## ⚠️ Lecciones Aprendidas (Troubleshooting)
 
-| Problema | Causa | Solución |
-|---|---|---|
-| `Cannot find module '/app/dist/main'` | `.tsbuildinfo` cacheado — TypeScript no emite archivos | `*.tsbuildinfo` en `.gitignore` + `.dockerignore` + `RUN rm -f *.tsbuildinfo` en Dockerfile |
-| `sh: nest: not found` (error 127) | `ENV NODE_ENV=production` antes de `npm ci` omite devDependencies | Mover `ENV NODE_ENV=production` al final del Dockerfile, después del build |
-| `dist/src/main.js` en lugar de `dist/main.js` | `rootDir` computado incorrectamente por archivos fuera de `src/` | `"rootDir": "./src"` explícito + excluir `prisma` en `tsconfig.build.json` |
-| Google Fonts @import error con Tailwind 4 | Turbopack expande CSS y el @import queda fuera de orden | Usar `next/font/google` en `layout.tsx` — nunca `@import url()` en CSS |
-
----
-
-## 🏗️ Patrón para Crear Módulos NestJS
-
-```typescript
-// 1. products.module.ts
-@Module({
-  imports: [PrismaModule],
-  controllers: [ProductsController],
-  providers: [ProductsService],
-  exports: [ProductsService],
-})
-export class ProductsModule {}
-
-// 2. Agregar a AppModule imports: [..., ProductsModule]
-
-// 3. products.controller.ts
-@Controller('products')
-@UseGuards(JwtAuthGuard)
-export class ProductsController {
-  constructor(private products: ProductsService) {}
-
-  @Get()
-  findAll(@CurrentUser() user: UserPayload) {
-    return this.products.findAll(user.organizationId)
-  }
-}
-
-// 4. products.service.ts
-@Injectable()
-export class ProductsService {
-  constructor(private prisma: PrismaService) {}
-
-  async findAll(organizationId: string) {
-    return this.prisma.product.findMany({
-      where: { organizationId, isActive: true },
-      include: { category: true },
-    })
-  }
-}
-```
+| Problema | Solución Histórica |
+|---|---|
+| **CORS blocked (Access-Control-Allow-Origin)** | Problema de "trailing slash". Se actualizó `main.ts` para aceptar la URL con y sin `/` final usando `process.env.FRONTEND_URL.replace(/\/$/, '')`. |
+| **Error 502 Bad Gateway en Railway Backend** | Ocurre por 2 razones: (1) Caché `.tsbuildinfo` corrupto (se arregló forzando su borrado en Dockerfile). (2) Colisión de puertos: Railway asigna `PORT=8080` internamente, si forzamos `PORT=3001` en env vars la app escucha un puerto y Railway rutea a otro. Solución: no hardcodear puerto, usar `process.env.PORT`. |
+| **Google Fonts error con Tailwind 4** | Turbopack expande CSS y el `@import` queda fuera de orden. Solución: Usar `next/font/google` en Next.js, no usar `@import` en CSS. |
 
 ---
 
-## 📦 Comandos Útiles
-
-```bash
-# Backend — desarrollo
-cd backend && npm run dev
-
-# Backend — producción local
-cd backend && npm run build && npm run start:prod
-
-# Backend — seed
-cd backend && npx ts-node prisma/seed.ts
-
-# Frontend — desarrollo
-cd frontend && npm run dev
-
-# Frontend — build standalone (Railway)
-cd frontend && npm run build
-node .next/standalone/server.js
-
-# Supabase — ver BD
-cd backend && npx prisma studio
-
-# Deploy — git push dispara Railway auto-deploy
-git add -A && git commit -m "..." && git push origin main
-```
-
----
-
-*Handoff generado por Antigravity AI · Natural OS v1.0 · 14 Mayo 2026*
+*Handoff actualizado por Antigravity AI · Natural OS v1.1 · 14 Mayo 2026*
