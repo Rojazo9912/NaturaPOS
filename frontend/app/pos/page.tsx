@@ -120,12 +120,12 @@ export default function POSPage() {
     setCart(prev => prev.map(i => i.id === id ? { ...i, qty: i.qty + delta } : i).filter(i => i.qty > 0))
   }
 
-  const subtotal   = cart.reduce((s, i) => s + i.price * i.qty, 0)
-  const discount   = customer ? Math.round(subtotal * 0.05) : 0
-  const redeemed   = Number(pointsToRedeem) || 0
-  const finalTotal = Math.max(0, subtotal - redeemed)
+  const subtotal    = cart.reduce((s, i) => s + i.price * i.qty, 0)
+  const discount    = customer ? Math.round(subtotal * 0.05) : 0
+  const redeemed    = Number(pointsToRedeem) || 0
+  const finalTotal  = Math.max(0, subtotal - discount - redeemed)
   const pointsEarned = Math.floor(finalTotal * 0.10)
-  const change     = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
+  const change      = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
 
   const catList = [ALL_CAT, ...categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
 

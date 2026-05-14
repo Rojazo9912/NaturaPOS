@@ -8,11 +8,12 @@ export const getSocket = (orgId?: string) => {
   if (!socket) {
     socket = io(`${SOCKET_URL}/events`, {
       transports: ['websocket'],
+      reconnectionAttempts: 5,
     });
-
-    if (orgId) {
-      socket.emit('join_org', orgId);
-    }
+  }
+  // Always (re)join the org room when orgId is provided
+  if (orgId) {
+    socket.emit('join_org', orgId);
   }
   return socket;
 };

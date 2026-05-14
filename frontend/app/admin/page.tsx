@@ -97,7 +97,7 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab('SECURITY')} className={activeTab === 'SECURITY' ? 'btn-green' : 'btn-ghost'} style={{ marginLeft: 'auto', border: '1px solid #ef444450' }}>🛡️ Auditoría Antifugas</button>
         </div>
 
-        {loading ? (
+        {loading && activeTab !== 'USERS' && activeTab !== 'SECURITY' && activeTab !== 'SUBSCRIPTIONS' ? (
           <div>Cargando datos...</div>
         ) : (
           <div>
@@ -285,7 +285,7 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
                 </td>
                 <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{i.minStock}</td>
                 <td style={{ padding: '16px' }}>
-                  <AdjustStockCell ingredientId={i.id} onDone={loadData} />
+                  <AdjustStockCell ingredientId={i.id} onDone={onReload} />
                 </td>
               </tr>
             ))}

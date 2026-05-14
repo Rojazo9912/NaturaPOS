@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [error, setError]           = useState('')
   const [view, setView]             = useState<'BRANCH' | 'FRANCHISE'>('BRANCH')
   const [userRole, setUserRole]     = useState('')
+  const [riskToast, setRiskToast]   = useState<string | null>(null)
 
   useEffect(() => {
     const token = getToken()
@@ -57,8 +58,9 @@ export default function DashboardPage() {
       apiGetDashboardSummary(token).then(setSummary)
       apiGetSalesByHour(token).then(setSalesByHour)
     })
-    socket.on('risk_alert', (alert) => {
-      window.alert(`🚨 Alerta de Riesgo: ${alert.description}`)
+    socket.on('risk_alert', (alert: any) => {
+      setRiskToast(`🚨 ${alert.description || 'Nueva alerta de riesgo'}`)
+      setTimeout(() => setRiskToast(null), 6000)
     })
 
     return () => {
@@ -123,6 +125,13 @@ export default function DashboardPage() {
       </header>
 
       <main className="p-4 md:p-7 max-w-7xl mx-auto space-y-6">
+
+        {riskToast && (
+          <div className="fixed top-4 right-4 z-50 animate-fadeIn p-4 rounded-xl bg-red-500 text-white font-bold text-sm shadow-xl shadow-red-500/30 flex items-center gap-3">
+            {riskToast}
+            <button onClick={() => setRiskToast(null)} className="ml-2 text-white/70 hover:text-white bg-transparent border-none cursor-pointer text-lg">×</button>
+          </div>
+        )}
 
         {loading && (
           <div className="text-center py-20 text-zinc-500">

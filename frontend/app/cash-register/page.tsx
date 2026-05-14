@@ -8,6 +8,7 @@ import {
   apiOpenRegister,
   apiCloseRegister,
   apiGetRegisterHistory,
+  apiGetOrders,
   type CashRegister,
 } from '@/lib/api'
 
@@ -25,18 +26,22 @@ export default function CashRegisterPage() {
   const [notes, setNotes]                 = useState('')
   const [error, setError]                 = useState('')
   const [submitting, setSubmitting]       = useState(false)
+  const [closeSummary, setCloseSummary]   = useState<any>(null)
+  const [todayOrders, setTodayOrders]     = useState<any[]>([])
 
   const loadData = async () => {
     const token = getToken()
     if (!token) { router.replace('/login'); return }
     setLoading(true)
     try {
-      const [active, hist] = await Promise.all([
+      const [active, hist, orders] = await Promise.all([
         apiGetActiveRegister(token),
         apiGetRegisterHistory(token),
+        apiGetOrders(token).catch(() => []),
       ])
       setActiveReg(active)
       setHistory(hist)
+      setTodayOrders(orders)
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -66,7 +71,8 @@ export default function CashRegisterPage() {
     if (!token || !activeReg || !closingAmount) return
     setSubmitting(true); setError('')
     try {
-      await apiCloseRegister(token, activeReg.id, Number(closingAmount), notes)
+      const result = await apiCloseRegister(token, activeReg.id, Number(closingAmount), notes)
+      setCloseSummary(result?.summary || null)
       await loadData()
       setClosingAmount('')
       setNotes('')
@@ -94,6 +100,18 @@ export default function CashRegisterPage() {
         {error && (
           <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 mb-6 animate-fadeIn">
             ⚠️ {error}
+          </div>
+        )}
+
+        {closeSummary && (
+          <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/30 mb-6 animate-fadeIn">
+            <h3 className="text-green-500 font-black text-lg mb-3">✅ Corte Generado Exitosamente</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div><div className="text-[10px] text-zinc-500 uppercase tracking-widest">Ventas Totales</div><div className="text-xl font-black text-white">{fmt(closeSummary.totalSales || 0)}</div></div>
+              <div><div className="text-[10px] text-zinc-500 uppercase tracking-widest">Efectivo</div><div className="text-xl font-black text-white">{fmt(closeSummary.totalCash || 0)}</div></div>
+              <div><div className="text-[10px] text-zinc-500 uppercase tracking-widest">Órdenes</div><div className="text-xl font-black text-white">{closeSummary.ordersCount || 0}</div></div>
+              <div><div className="text-[10px] text-zinc-500 uppercase tracking-widest">Diferencia</div><div className={`text-xl font-black ${(closeSummary.difference || 0) < 0 ? 'text-red-500' : 'text-green-500'}`}>{fmt(closeSummary.difference || 0)}</div></div>
+            </div>
           </div>
         )}
 
