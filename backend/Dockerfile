@@ -1,30 +1,30 @@
 # ─────────────────────────────────────────────
-# Natural OS — Dockerfile (single-stage, más simple y confiable)
+# Natural OS — Dockerfile
+# NODE_ENV=production va DESPUÉS del build para que
+# npm ci instale devDependencies (incluye @nestjs/cli)
 # ─────────────────────────────────────────────
 
 FROM node:20-alpine
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-
-# Instalar todas las dependencias (incluyendo dev para el build)
+# Instalar TODAS las deps (dev + prod) para poder compilar
 COPY package*.json ./
 COPY prisma ./prisma/
-
 RUN npm ci
 
 # Generar Prisma Client
 RUN npx prisma generate
 
-# Copiar el código fuente
+# Copiar código fuente y compilar
 COPY . .
-
-# Compilar TypeScript
 RUN npm run build
 
-# Eliminar dev dependencies para reducir imagen
+# Eliminar devDependencies después del build
 RUN npm prune --production
+
+# Ahora sí setear producción (DESPUÉS del build)
+ENV NODE_ENV=production
 
 EXPOSE 3001
 
