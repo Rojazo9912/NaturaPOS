@@ -40,11 +40,19 @@ export class CashRegisterService {
     });
 
     const totalSales     = orders.reduce((s, o) => s + o.total, 0);
+    const totalDiscounts = orders.reduce((s, o) => s + (o.discountAmount || 0), 0);
+    
+    // Calcular costo de productos vendidos (COGS)
+    const totalCost = orders.reduce((sum, o) => {
+      return sum + o.items.reduce((itemSum, item) => itemSum + (item.costPrice * item.quantity), 0);
+    }, 0);
+
     const totalCash      = orders.flatMap(o => o.payments).filter(p => p.method === 'CASH').reduce((s, p) => s + p.amount, 0);
     const totalCard      = orders.flatMap(o => o.payments).filter(p => p.method === 'CARD').reduce((s, p) => s + p.amount, 0);
     const totalTransfer  = orders.flatMap(o => o.payments).filter(p => p.method === 'TRANSFER').reduce((s, p) => s + p.amount, 0);
     const totalWallet    = orders.flatMap(o => o.payments).filter(p => p.method === 'WALLET').reduce((s, p) => s + p.amount, 0);
     const totalQR        = orders.flatMap(o => o.payments).filter(p => p.method === 'QR').reduce((s, p) => s + p.amount, 0);
+    
     const expectedAmount = register.openingAmount + totalCash;
     const difference     = closingAmount - expectedAmount;
 
@@ -71,11 +79,11 @@ export class CashRegisterService {
         totalWallet,
         totalQR,
         totalRefunds: 0,
-        totalDiscounts: orders.reduce((s, o) => s + o.discountAmount, 0),
+        totalDiscounts,
         totalWaste: 0,
-        grossProfit: totalSales,
-        netProfit: totalSales,
-        taxAmount: 0,
+        grossProfit: totalSales - totalCost,
+        netProfit: totalSales - totalCost,
+        taxAmount: orders.reduce((s, o) => s + (o.taxAmount || 0), 0),
         notes,
       };
 

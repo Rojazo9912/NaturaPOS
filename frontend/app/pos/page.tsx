@@ -61,6 +61,7 @@ export default function POSPage() {
   const [lastOrder, setLastOrder] = useState<any>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
+  const [activeRegister, setActiveRegister] = useState<any>(null)
 
   // Catalog state
   const [products, setProducts]       = useState<Product[]>([])
@@ -78,9 +79,11 @@ export default function POSPage() {
     Promise.all([
       apiGetProducts(token),
       apiGetCategories(token),
-    ]).then(([prods, cats]) => {
+      apiGetActiveRegister(token).catch(() => null),
+    ]).then(([prods, cats, reg]) => {
       setProducts(prods)
       setCategories(cats)
+      setActiveRegister(reg)
     }).catch(console.error)
       .finally(() => setCatalogLoading(false))
 
@@ -179,6 +182,13 @@ export default function POSPage() {
   async function handlePay() {
     const token = getToken()
     if (!token) return
+    
+    if (!activeRegister) {
+      setPayError('❌ Debes ABRIR LA CAJA antes de poder realizar ventas.')
+      setPaying(false)
+      return
+    }
+
     setPaying(true)
     setPayError('')
     try {
@@ -190,6 +200,7 @@ export default function POSPage() {
       const orderData = await apiCreateOrder(token, {
         customerId: customer?.id,
         subtotal,
+        discountAmount: discount,
         total: finalTotal,
         items: cart.map(i => ({
           productId: i.id,

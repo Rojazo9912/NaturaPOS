@@ -35,12 +35,15 @@ export class OrdersService {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
-          orderNumber: `ORD-${Date.now()}`,
+          orderNumber: `NP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
           branchId: user.branchId,
           cashierId: user.id,
           customerId: data.customerId || null,
           subtotal: data.subtotal,
+          discountAmount: data.discountAmount || 0,
           total: data.total,
+          pointsEarned: data.pointsEarned || 0,
+          pointsRedeemed: data.pointsRedeemed || 0,
           status: 'COMPLETED',
           items: {
             create: data.items.map((item: any) => ({
