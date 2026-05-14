@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { OrdersModule } from './orders/orders.module';
 import { CustomersModule } from './customers/customers.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { CashRegisterModule } from './cash-register/cash-register.module';
 
 @Module({
   imports: [
@@ -18,10 +21,13 @@ import { CustomersModule } from './customers/customers.module';
     ProductsModule,
     OrdersModule,
     CustomersModule,
-    // TODO: InventoryModule...
+    DashboardModule,
+    InventoryModule,
+    CashRegisterModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+
 

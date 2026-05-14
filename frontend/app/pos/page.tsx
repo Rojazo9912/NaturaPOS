@@ -2,94 +2,94 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { getToken, getUser, clearSession } from '@/lib/api'
+import {
+  getToken, getUser, clearSession,
+  apiGetProducts, apiGetCategories,
+  apiSearchCustomers, apiCreateOrder,
+  type Product, type Category, type Customer,
+} from '@/lib/api'
 
 // ── Types ───────────────────────────────────────────
-interface Product { id: string; name: string; price: number; category: string; emoji: string; desc: string }
 interface CartItem extends Product { qty: number }
-interface Customer { name: string; phone: string; level: string; points: number }
 
-// ── Mock Data ────────────────────────────────────────
-const CATEGORIES = [
-  { id: 'all', label: 'Todo', emoji: '✨' },
-  { id: 'smoothies', label: 'Smoothies', emoji: '🥤' },
-  { id: 'proteinas', label: 'Proteínas', emoji: '💪' },
-  { id: 'ensaladas', label: 'Ensaladas', emoji: '🥗' },
-  { id: 'shots', label: 'Shots', emoji: '⚡' },
-  { id: 'suplementos', label: 'Suplementos', emoji: '🧪' },
-  { id: 'snacks', label: 'Snacks', emoji: '🍫' },
-]
-
-const PRODUCTS: Product[] = [
-  { id: '1', name: 'Green Power', price: 89, category: 'smoothies', emoji: '🥤', desc: 'Espinaca, manzana, jengibre' },
-  { id: '2', name: 'Berry Blast', price: 95, category: 'smoothies', emoji: '🫐', desc: 'Berries, proteína, miel' },
-  { id: '3', name: 'Tropical Zen', price: 79, category: 'smoothies', emoji: '🍍', desc: 'Mango, piña, coco' },
-  { id: '4', name: 'Choco Protein', price: 105, category: 'smoothies', emoji: '🍫', desc: 'Whey, cacao, almendra' },
-  { id: '5', name: 'Sunrise', price: 85, category: 'smoothies', emoji: '🌅', desc: 'Zanahoria, naranja, cúrcuma' },
-  { id: '6', name: 'Whey Vainilla', price: 180, category: 'proteinas', emoji: '💪', desc: 'Scoop 30g whey protein' },
-  { id: '7', name: 'Creatina 5g', price: 80, category: 'proteinas', emoji: '⚡', desc: 'Creatina monohidrato' },
-  { id: '8', name: 'BCAA Tropical', price: 95, category: 'proteinas', emoji: '🏋️', desc: 'Aminoácidos esenciales' },
-  { id: '9', name: 'Bowl Mediterráneo', price: 130, category: 'ensaladas', emoji: '🥗', desc: 'Quinoa, aguacate, tomate' },
-  { id: '10', name: 'Bowl Proteíco', price: 145, category: 'ensaladas', emoji: '🥙', desc: 'Pollo, arroz, vegetales' },
-  { id: '11', name: 'Shot Jengibre', price: 35, category: 'shots', emoji: '🔥', desc: 'Jengibre + limón + pimienta' },
-  { id: '12', name: 'Shot Cúrcuma', price: 35, category: 'shots', emoji: '✨', desc: 'Cúrcuma + pimienta negra' },
-  { id: '13', name: 'Shot Verde', price: 40, category: 'shots', emoji: '🌿', desc: 'Wheatgrass + espirulina' },
-  { id: '14', name: 'Colágeno', price: 90, category: 'suplementos', emoji: '🌟', desc: 'Colágeno hidrolizado' },
-  { id: '15', name: 'Omega 3', price: 120, category: 'suplementos', emoji: '🐟', desc: '1000mg EPA+DHA' },
-  { id: '16', name: 'Barra Proteína', price: 45, category: 'snacks', emoji: '🍫', desc: '20g proteína, bajo azúcar' },
-  { id: '17', name: 'Mix Nueces', price: 55, category: 'snacks', emoji: '🥜', desc: 'Trail mix premium' },
-  { id: '18', name: 'Granola Natural', price: 65, category: 'snacks', emoji: '🌾', desc: 'Sin azúcar añadida' },
-]
-
-const MOCK_CUSTOMERS: Record<string, Customer> = {
-  '5512345678': { name: 'Ana García', phone: '5512345678', level: 'GOLD', points: 450 },
-  '5598765432': { name: 'Carlos Méndez', phone: '5598765432', level: 'ELITE', points: 1200 },
-  '5511223344': { name: 'María López', phone: '5511223344', level: 'VERDE', points: 80 },
-}
-
+// ── Static Data ──────────────────────────────────────
 const PAYMENT_METHODS = [
-  { id: 'cash', label: 'Efectivo', emoji: '💵' },
-  { id: 'card', label: 'Tarjeta', emoji: '💳' },
-  { id: 'transfer', label: 'Transfer', emoji: '📲' },
-  { id: 'wallet', label: 'Wallet', emoji: '👛' },
-  { id: 'qr', label: 'QR', emoji: '📱' },
+  { id: 'CASH',     label: 'Efectivo', emoji: '💵' },
+  { id: 'CARD',     label: 'Tarjeta',  emoji: '💳' },
+  { id: 'TRANSFER', label: 'Transfer', emoji: '📲' },
+  { id: 'WALLET',   label: 'Wallet',   emoji: '👛' },
+  { id: 'QR',       label: 'QR',       emoji: '📱' },
 ]
 
 const LEVEL_COLORS: Record<string, string> = {
   VERDE: '#22c55e', GOLD: '#f59e0b', ELITE: '#8b5cf6', LEGEND: '#ec4899',
 }
 
-// ── Helpers ──────────────────────────────────────────
+const ALL_CAT = { id: 'all', name: 'Todo', emoji: '✨' }
+
 const fmt = (n: number) => `$${n.toFixed(2)}`
-const now = () => new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+const clock = () => new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
 
 // ── Main Component ───────────────────────────────────
 export default function POSPage() {
   const router = useRouter()
-  const user = getUser()
+  const user   = getUser()
 
-  const [time, setTime]             = useState(now())
+  const [time, setTime]             = useState(clock())
   const [category, setCategory]     = useState('all')
   const [search, setSearch]         = useState('')
   const [cart, setCart]             = useState<CartItem[]>([])
   const [phoneQuery, setPhoneQuery] = useState('')
   const [customer, setCustomer]     = useState<Customer | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState('cash')
-  const [showPayModal, setShowPayModal]   = useState(false)
+  const [customerLoading, setCustomerLoading] = useState(false)
+  const [paymentMethod, setPaymentMethod]     = useState('CASH')
+  const [showPayModal, setShowPayModal]       = useState(false)
   const [cashGiven, setCashGiven]   = useState('')
   const [orderDone, setOrderDone]   = useState(false)
+  const [paying, setPaying]         = useState(false)
+  const [payError, setPayError]     = useState('')
 
-  // Clock
+  // Catalog state
+  const [products, setProducts]       = useState<Product[]>([])
+  const [categories, setCategories]   = useState<Category[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(true)
+
+  // Fetch catalog on mount
   useEffect(() => {
-    if (!getToken()) { router.replace('/login'); return }
-    const t = setInterval(() => setTime(now()), 30000)
+    const token = getToken()
+    if (!token) { router.replace('/login'); return }
+
+    const t = setInterval(() => setTime(clock()), 30000)
+
+    setCatalogLoading(true)
+    Promise.all([
+      apiGetProducts(token),
+      apiGetCategories(token),
+    ]).then(([prods, cats]) => {
+      setProducts(prods)
+      setCategories(cats)
+    }).catch(console.error)
+      .finally(() => setCatalogLoading(false))
+
     return () => clearInterval(t)
   }, [router])
 
-  // Customer lookup
+  // Customer search — debounced
   useEffect(() => {
-    if (phoneQuery.length >= 10) setCustomer(MOCK_CUSTOMERS[phoneQuery] || null)
-    else setCustomer(null)
+    const token = getToken()
+    if (!token || phoneQuery.length < 6) { setCustomer(null); return }
+    const id = setTimeout(async () => {
+      setCustomerLoading(true)
+      try {
+        const results = await apiSearchCustomers(token, phoneQuery)
+        setCustomer(results[0] ?? null)
+      } catch {
+        setCustomer(null)
+      } finally {
+        setCustomerLoading(false)
+      }
+    }, 500)
+    return () => clearTimeout(id)
   }, [phoneQuery])
 
   const addToCart = useCallback((p: Product) => {
@@ -104,39 +104,67 @@ export default function POSPage() {
     setCart(prev => prev.map(i => i.id === id ? { ...i, qty: i.qty + delta } : i).filter(i => i.qty > 0))
   }
 
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0)
-  const discount = customer ? Math.round(total * 0.05) : 0
-  const finalTotal = total - discount
-  const change = paymentMethod === 'cash' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
+  const subtotal   = cart.reduce((s, i) => s + i.price * i.qty, 0)
+  const discount   = customer ? Math.round(subtotal * 0.05) : 0
+  const finalTotal = subtotal - discount
+  const pointsEarned = Math.floor(finalTotal * 0.05)
+  const change     = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
 
-  const filtered = PRODUCTS.filter(p =>
-    (category === 'all' || p.category === category) &&
-    (p.name.toLowerCase().includes(search.toLowerCase()) || p.desc.toLowerCase().includes(search.toLowerCase()))
+  const catList = [ALL_CAT, ...categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
+
+  const filtered = products.filter(p =>
+    p.isActive &&
+    (category === 'all' || p.categoryId === category) &&
+    (p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description ?? '').toLowerCase().includes(search.toLowerCase()))
   )
 
-  function handlePay() {
-    setOrderDone(true)
-    setTimeout(() => {
-      setCart([])
-      setCustomer(null)
-      setPhoneQuery('')
-      setCashGiven('')
-      setPaymentMethod('cash')
-      setShowPayModal(false)
-      setOrderDone(false)
-    }, 2000)
+  async function handlePay() {
+    const token = getToken()
+    if (!token) return
+    setPaying(true)
+    setPayError('')
+    try {
+      await apiCreateOrder(token, {
+        customerId: customer?.id,
+        subtotal,
+        total: finalTotal,
+        items: cart.map(i => ({
+          productId: i.id,
+          quantity: i.qty,
+          unitPrice: i.price,
+          subtotal: i.price * i.qty,
+        })),
+        payments: [{ method: paymentMethod, amount: finalTotal }],
+        pointsEarned: customer ? pointsEarned : 0,
+      })
+      setOrderDone(true)
+      setTimeout(() => {
+        setCart([])
+        setCustomer(null)
+        setPhoneQuery('')
+        setCashGiven('')
+        setPaymentMethod('CASH')
+        setShowPayModal(false)
+        setOrderDone(false)
+      }, 2200)
+    } catch (e: any) {
+      setPayError(e.message ?? 'Error al procesar el pago')
+    } finally {
+      setPaying(false)
+    }
   }
 
   // ── Styles ────────────────────────────────────────
   const S = {
-    wrap: { display: 'flex', flexDirection: 'column' as const, height: '100vh', background: 'var(--c-bg)' },
+    wrap:   { display: 'flex', flexDirection: 'column' as const, height: '100vh', background: 'var(--c-bg)' },
     header: {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 20px', height: '56px', flexShrink: 0,
       background: 'var(--c-surface-1)', borderBottom: '1px solid var(--c-border)',
     },
-    main: { display: 'flex', flex: 1, overflow: 'hidden' },
-    left: { flex: 1, display: 'flex', flexDirection: 'column' as const, borderRight: '1px solid var(--c-border)', overflow: 'hidden' },
+    main:  { display: 'flex', flex: 1, overflow: 'hidden' },
+    left:  { flex: 1, display: 'flex', flexDirection: 'column' as const, borderRight: '1px solid var(--c-border)', overflow: 'hidden' },
     right: { width: '380px', display: 'flex', flexDirection: 'column' as const, background: 'var(--c-surface-1)' },
   }
 
@@ -153,13 +181,16 @@ export default function POSPage() {
           }}>🌿</div>
           <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--c-text)' }}>Natural OS</span>
           <span style={{ fontSize: '12px', color: 'var(--c-text-muted)', paddingLeft: '8px', borderLeft: '1px solid var(--c-border)' }}>
-            Sucursal Principal
+            {user?.name ? `Cajero: ${user.name}` : 'POS'}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--c-green)', fontVariantNumeric: 'tabular-nums' }}>
             {time}
           </span>
+          <a href="/dashboard" style={{ fontSize: '12px', color: 'var(--c-text-muted)', textDecoration: 'none' }}>
+            📊 Dashboard
+          </a>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--c-green)', animation: 'pulse-green 2s infinite' }} />
             <span style={{ fontSize: '13px', color: 'var(--c-text-secondary)' }}>{user?.name || 'Cajero'}</span>
@@ -187,7 +218,7 @@ export default function POSPage() {
               style={{ width: '100%', padding: '10px 14px', fontSize: '14px', marginBottom: '10px' }}
             />
             <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
-              {CATEGORIES.map(c => (
+              {catList.map(c => (
                 <button key={c.id} onClick={() => setCategory(c.id)}
                   style={{
                     flexShrink: 0, padding: '6px 12px', borderRadius: 'var(--r-full)',
@@ -196,7 +227,7 @@ export default function POSPage() {
                     color: category === c.id ? '#000' : 'var(--c-text-secondary)',
                     transition: 'var(--t-mid)',
                   }}>
-                  {c.emoji} {c.label}
+                  {c.emoji} {c.name}
                 </button>
               ))}
             </div>
@@ -208,7 +239,12 @@ export default function POSPage() {
             display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px',
             alignContent: 'start',
           }}>
-            {filtered.map(p => (
+            {catalogLoading ? (
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: 'var(--c-text-muted)' }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+                Cargando catálogo...
+              </div>
+            ) : filtered.map(p => (
               <button key={p.id} onClick={() => addToCart(p)}
                 style={{
                   background: 'var(--c-surface-2)', border: '1px solid var(--c-border)',
@@ -231,15 +267,15 @@ export default function POSPage() {
                   el.style.boxShadow = 'none'
                 }}
               >
-                <span style={{ fontSize: '30px' }}>{p.emoji}</span>
+                <span style={{ fontSize: '30px' }}>{p.category?.emoji ?? '📦'}</span>
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text)', lineHeight: 1.3 }}>{p.name}</span>
-                <span style={{ fontSize: '11px', color: 'var(--c-text-muted)', lineHeight: 1.3 }}>{p.desc}</span>
+                <span style={{ fontSize: '11px', color: 'var(--c-text-muted)', lineHeight: 1.3 }}>{p.description ?? ''}</span>
                 <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--c-green)', marginTop: '4px' }}>{fmt(p.price)}</span>
               </button>
             ))}
-            {filtered.length === 0 && (
+            {!catalogLoading && filtered.length === 0 && (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--c-text-muted)' }}>
-                No se encontraron productos
+                {products.length === 0 ? '⚠️ No hay productos en el catálogo. Agrégalos desde el panel de administración.' : 'No se encontraron productos'}
               </div>
             )}
           </div>
@@ -259,23 +295,33 @@ export default function POSPage() {
               style={{ width: '100%', padding: '10px 14px', fontSize: '14px' }}
               maxLength={10}
             />
-            {customer && (
+            {customerLoading && (
+              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>Buscando...</div>
+            )}
+            {!customerLoading && customer && (
               <div style={{
                 marginTop: '10px', padding: '12px 14px', borderRadius: 'var(--r-md)',
-                background: 'var(--c-surface-2)', border: `1px solid ${LEVEL_COLORS[customer.level]}40`,
+                background: 'var(--c-surface-2)', border: `1px solid ${LEVEL_COLORS[customer.level] ?? '#333'}40`,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 animation: 'fadeIn 0.2s ease',
               }}>
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text)' }}>{customer.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>⭐ {customer.points} pts</div>
+                  <div style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>
+                    ⭐ {customer.points.toFixed(0)} pts · {customer.totalVisits} visitas
+                  </div>
                 </div>
                 <span style={{
                   padding: '3px 10px', borderRadius: 'var(--r-full)', fontSize: '11px', fontWeight: 700,
-                  background: `${LEVEL_COLORS[customer.level]}20`, color: LEVEL_COLORS[customer.level],
+                  background: `${LEVEL_COLORS[customer.level] ?? '#555'}20`, color: LEVEL_COLORS[customer.level] ?? '#aaa',
                 }}>
                   {customer.level}
                 </span>
+              </div>
+            )}
+            {!customerLoading && phoneQuery.length >= 6 && !customer && (
+              <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>
+                Cliente no encontrado
               </div>
             )}
           </div>
@@ -293,7 +339,7 @@ export default function POSPage() {
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '10px 0', borderBottom: '1px solid var(--c-border)',
               }}>
-                <span style={{ fontSize: '20px' }}>{item.emoji}</span>
+                <span style={{ fontSize: '20px' }}>{item.category?.emoji ?? '📦'}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.name}
@@ -320,6 +366,12 @@ export default function POSPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px' }}>
                 <span style={{ color: 'var(--c-text-muted)' }}>Descuento cliente (5%)</span>
                 <span style={{ color: 'var(--c-green)' }}>−{fmt(discount)}</span>
+              </div>
+            )}
+            {customer && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)' }}>Natural Points a ganar</span>
+                <span style={{ color: '#f59e0b' }}>+{pointsEarned} pts</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
@@ -364,15 +416,20 @@ export default function POSPage() {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           backdropFilter: 'blur(4px)',
-        }} onClick={() => !orderDone && setShowPayModal(false)}>
+        }} onClick={() => !orderDone && !paying && setShowPayModal(false)}>
           <div className="glass" onClick={e => e.stopPropagation()}
-            style={{ width: '380px', borderRadius: 'var(--r-xl)', padding: '32px', animation: 'fadeIn 0.2s ease' }}>
+            style={{ width: '400px', borderRadius: 'var(--r-xl)', padding: '32px', animation: 'fadeIn 0.2s ease' }}>
 
             {orderDone ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{ fontSize: '56px', marginBottom: '16px' }}>✅</div>
                 <h3 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--c-text)', marginBottom: '8px' }}>¡Cobro exitoso!</h3>
-                <p style={{ color: 'var(--c-green)', fontWeight: 600 }}>{fmt(finalTotal)} recibido</p>
+                <p style={{ color: 'var(--c-green)', fontWeight: 600 }}>{fmt(finalTotal)} procesado</p>
+                {customer && (
+                  <p style={{ fontSize: '13px', color: '#f59e0b', marginTop: '8px' }}>
+                    +{pointsEarned} Natural Points para {customer.name}
+                  </p>
+                )}
               </div>
             ) : (
               <>
@@ -385,7 +442,7 @@ export default function POSPage() {
                 <div style={{ background: 'var(--c-surface-2)', borderRadius: 'var(--r-lg)', padding: '16px', marginBottom: '20px' }}>
                   {cart.map(i => (
                     <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                      <span style={{ color: 'var(--c-text-secondary)' }}>{i.emoji} {i.name} x{i.qty}</span>
+                      <span style={{ color: 'var(--c-text-secondary)' }}>{i.category?.emoji ?? '📦'} {i.name} x{i.qty}</span>
                       <span style={{ fontWeight: 600 }}>{fmt(i.price * i.qty)}</span>
                     </div>
                   ))}
@@ -400,7 +457,7 @@ export default function POSPage() {
                   </div>
                 </div>
 
-                {paymentMethod === 'cash' && (
+                {paymentMethod === 'CASH' && (
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ fontSize: '13px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '8px' }}>
                       Efectivo recibido
@@ -416,13 +473,19 @@ export default function POSPage() {
                   </div>
                 )}
 
+                {payError && (
+                  <div style={{ marginBottom: '16px', padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.1)', fontSize: '13px', color: '#ef4444' }}>
+                    ⚠️ {payError}
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => setShowPayModal(false)} className="btn-ghost"
-                    style={{ flex: 1, padding: '13px', fontSize: '14px' }}>Cancelar</button>
+                    style={{ flex: 1, padding: '13px', fontSize: '14px' }} disabled={paying}>Cancelar</button>
                   <button onClick={handlePay} className="btn-green"
                     style={{ flex: 2, padding: '13px', fontSize: '15px' }}
-                    disabled={paymentMethod === 'cash' && cashGiven !== '' && Number(cashGiven) < finalTotal}>
-                    ✅ Confirmar
+                    disabled={paying || (paymentMethod === 'CASH' && cashGiven !== '' && Number(cashGiven) < finalTotal)}>
+                    {paying ? '⏳ Procesando...' : '✅ Confirmar'}
                   </button>
                 </div>
               </>
