@@ -306,6 +306,21 @@ export async function apiGetIngredients(token: string): Promise<Ingredient[]> {
   return res.json()
 }
 
+export async function apiAdjustInventory(token: string, data: {
+  ingredientId?: string
+  productId?: string
+  quantity: number
+  reason?: string
+}) {
+  const res = await fetch(`${API}/api/v1/inventory/adjust`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error ajustando inventario')
+  return res.json()
+}
+
 export async function apiCreateIngredient(token: string, data: any) {
   const res = await fetch(`${API}/api/v1/inventory/ingredients`, {
     method: 'POST',

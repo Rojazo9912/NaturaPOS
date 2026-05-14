@@ -21,6 +21,7 @@ import {
   apiGetBranches,
   apiCreateUser,
   apiUpdateUser,
+  apiAdjustInventory,
   type Product,
   type Category,
   type Ingredient
@@ -179,6 +180,40 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
   )
 }
 
+// ── ADJUST STOCK CELL ──────────────────────────────────────────────────────
+function AdjustStockCell({ ingredientId, onDone }: { ingredientId: string; onDone: () => void }) {
+  const [qty, setQty] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const handleAdjust = async () => {
+    const token = getToken()
+    if (!token || qty === '' || qty === '0') return
+    setBusy(true)
+    try {
+      await apiAdjustInventory(token, { ingredientId, quantity: Number(qty), reason: 'Ajuste manual admin' })
+      setQty('')
+      onDone()
+    } catch { /* ignore */ } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+      <input
+        type="number"
+        value={qty}
+        onChange={e => setQty(e.target.value)}
+        placeholder="±qty"
+        style={{ width: '64px', padding: '4px 8px', fontSize: '12px', background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', borderRadius: '6px', color: 'var(--c-text)' }}
+      />
+      <button onClick={handleAdjust} disabled={busy || qty === ''} className="btn-green" style={{ padding: '4px 10px', fontSize: '11px' }}>
+        {busy ? '...' : '✓'}
+      </button>
+    </div>
+  )
+}
+
 // ── INGREDIENTS TAB ────────────────────────────────────────────────────────
 function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[], onReload: () => void }) {
   const [form, setForm] = useState({ name: '', unit: 'GRAM', costPerUnit: '', minStock: '' })
@@ -231,6 +266,7 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
               <th style={{ padding: '16px', fontSize: '13px' }}>Costo/Unidad</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Stock Actual</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Mínimo</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Ajustar</th>
             </tr>
           </thead>
           <tbody>
@@ -244,10 +280,13 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
                     fontWeight: 800, 
                     color: (i.stock || 0) <= (i.minStock || 0) ? '#ef4444' : 'var(--c-green)'
                   }}>
-                    {i.stock || 0}
+                    {i.stock ?? 0}
                   </span>
                 </td>
                 <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{i.minStock}</td>
+                <td style={{ padding: '16px' }}>
+                  <AdjustStockCell ingredientId={i.id} onDone={loadData} />
+                </td>
               </tr>
             ))}
           </tbody>

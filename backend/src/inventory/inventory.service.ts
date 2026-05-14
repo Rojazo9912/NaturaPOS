@@ -100,8 +100,19 @@ export class InventoryService {
   async getIngredients(organizationId: string) {
     return this.prisma.ingredient.findMany({
       where: { organizationId, isActive: true },
+      include: {
+        branchStock: {
+          select: { quantity: true },
+          take: 1,
+        },
+      },
       orderBy: { name: 'asc' },
-    });
+    }).then(ingredients =>
+      ingredients.map(i => ({
+        ...i,
+        stock: i.branchStock.reduce((sum, s) => sum + s.quantity, 0),
+      }))
+    );
   }
 
   async createIngredient(organizationId: string, data: any) {
