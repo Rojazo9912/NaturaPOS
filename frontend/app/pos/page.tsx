@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import InstallPrompt from '@/components/InstallPrompt'
 import {
   getToken, getUser, clearSession,
   apiGetProducts, apiGetCategories,
@@ -62,6 +63,7 @@ export default function POSPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
   const [activeRegister, setActiveRegister] = useState<any>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
 
   // Catalog state
   const [products, setProducts]       = useState<Product[]>([])
@@ -89,6 +91,24 @@ export default function POSPage() {
 
     return () => clearInterval(t)
   }, [router])
+
+  // Auto-focus search on load
+  useEffect(() => {
+    if (!catalogLoading) searchRef.current?.focus()
+  }, [catalogLoading])
+
+  // Keyboard shortcut: Enter = confirm payment when modal open
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && showPayModal && !paying) {
+        const canPay = paymentMethod !== 'CASH' || !cashGiven || Number(cashGiven) >= finalTotal
+        if (canPay && cart.length > 0) handlePay()
+      }
+      if (e.key === 'Escape' && showPayModal) setShowPayModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showPayModal, paying, paymentMethod, cashGiven, finalTotal, cart])
 
   // Customer search — debounced
   useEffect(() => {
@@ -233,6 +253,7 @@ export default function POSPage() {
   // ── Styles ────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen bg-black overflow-hidden">
+      <InstallPrompt />
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-4 h-14 shrink-0 bg-zinc-950 border-b border-zinc-900 sticky top-0 z-50">
@@ -269,6 +290,7 @@ export default function POSPage() {
           {/* Search + Categories */}
           <div className="p-3 md:p-4 border-b border-zinc-900 shrink-0">
             <input
+              ref={searchRef}
               id="pos-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -519,8 +541,32 @@ export default function POSPage() {
                     <label style={{ fontSize: '13px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '8px' }}>
                       Efectivo recibido
                     </label>
+                    {/* Quick denomination buttons */}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Exacto', val: Math.ceil(finalTotal / 10) * 10 },
+                        { label: '$50', val: 50 },
+                        { label: '$100', val: 100 },
+                        { label: '$200', val: 200 },
+                        { label: '$500', val: 500 },
+                      ].filter(b => b.val >= finalTotal || b.label === 'Exacto').map(b => (
+                        <button
+                          key={b.label}
+                          onClick={() => setCashGiven(b.val.toString())}
+                          style={{
+                            padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
+                            cursor: 'pointer', border: '1px solid var(--c-border)',
+                            background: cashGiven === b.val.toString() ? 'var(--c-green)' : 'var(--c-surface-2)',
+                            color: cashGiven === b.val.toString() ? '#000' : 'var(--c-text)',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {b.label === 'Exacto' ? `Exacto ${fmt(b.val)}` : b.label}
+                        </button>
+                      ))}
+                    </div>
                     <input value={cashGiven} onChange={e => setCashGiven(e.target.value.replace(/\D/g, ''))}
-                      placeholder="$0.00" type="number" className="input-dark"
+                      placeholder="O escribe la cantidad..." type="number" className="input-dark"
                       style={{ width: '100%', padding: '12px 14px', fontSize: '18px', fontWeight: 700 }} />
                     {cashGiven && Number(cashGiven) >= finalTotal && (
                       <div style={{ marginTop: '8px', padding: '10px 14px', borderRadius: 'var(--r-md)', background: 'rgba(34,197,94,0.1)', fontSize: '14px' }}>

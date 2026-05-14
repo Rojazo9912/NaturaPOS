@@ -149,6 +149,24 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* ── Quick Actions ── */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          {[
+            { href: '/pos',           emoji: '💳', label: 'Punto de Venta',   color: '#22c55e' },
+            { href: '/cash-register', emoji: '💰', label: 'Corte de Caja',    color: '#f59e0b' },
+            { href: '/ventas',        emoji: '📋', label: 'Historial Ventas', color: '#6366f1' },
+            { href: '/admin',         emoji: '⚙️', label: 'Administrar',      color: '#8b5cf6' },
+            { href: '/profile',       emoji: '👤', label: 'Mi Perfil',        color: '#ec4899' },
+          ].map(a => (
+            <a key={a.href} href={a.href} style={{ textDecoration: 'none' }}
+              className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-zinc-900 bg-zinc-950 hover:border-zinc-700 transition-all hover:-translate-y-0.5"
+            >
+              <span style={{ fontSize: '24px' }}>{a.emoji}</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: a.color, textAlign: 'center' }}>{a.label}</span>
+            </a>
+          ))}
+        </div>
+
         {!loading && summary && (
           <>
             {userRole === 'OWNER' && (

@@ -241,14 +241,37 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
               <th style={{ padding: '16px', fontSize: '13px' }}>Nombre</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Categoría</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Precio</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Estado</th>
             </tr>
           </thead>
           <tbody>
             {products.map(p => (
-              <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+              <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', opacity: p.isActive ? 1 : 0.5 }}>
                 <td style={{ padding: '16px', fontWeight: 600 }}>{p.name}</td>
-                <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{p.category?.name || '-'}</td>
-                <td style={{ padding: '16px', color: 'var(--c-green)' }}>${p.price}</td>
+                <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>
+                  {p.category?.emoji} {p.category?.name || '—'}
+                </td>
+                <td style={{ padding: '16px', color: 'var(--c-green)', fontWeight: 700 }}>${p.price}</td>
+                <td style={{ padding: '16px' }}>
+                  <button
+                    onClick={async () => {
+                      const token = getToken()
+                      if (!token) return
+                      try {
+                        await apiUpdateProduct(token, p.id, { isActive: !p.isActive })
+                        onReload()
+                      } catch { /* ignore */ }
+                    }}
+                    style={{
+                      padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                      cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+                      background: p.isActive ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)',
+                      color: p.isActive ? '#22c55e' : '#ef4444',
+                    }}
+                  >
+                    {p.isActive ? '● Activo' : '● Inactivo'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

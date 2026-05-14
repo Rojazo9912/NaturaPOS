@@ -1,0 +1,12 @@
+# Ejecuta este script en PowerShell para copiar los íconos PWA al directorio public/
+# Doble clic en el archivo o ejecutar en terminal PowerShell
+
+$src = "C:\Users\Migue\.gemini\antigravity\brain\0d03469c-0717-4cb4-a39d-448e20a6187a"
+$dst = "C:\Users\Migue\OneDrive\Documentos\Desarrollos\NaturaPOS\frontend\public"
+
+Copy-Item "$src\natural_pos_icon_1778800633980.png" "$dst\icon-512.png" -Force
+Copy-Item "$src\natural_pos_maskable_1778800654512.png" "$dst\icon-maskable.png" -Force
+Copy-Item "$src\natural_pos_icon_1778800633980.png" "$dst\icon-192.png" -Force
+
+Write-Host "✅ Íconos PWA copiados:"
+Get-ChildItem "$dst\*.png" | Select-Object Name, Length
