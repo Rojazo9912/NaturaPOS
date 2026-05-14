@@ -7,7 +7,7 @@ import {
   apiGetProducts, apiGetCategories,
   apiSearchCustomers, apiCreateOrder,
   apiGetSubscriptionPlans, apiSubscribeCustomer,
-  apiCreateCheckoutSession,
+  apiCreateCheckoutSession, apiGetActiveRegister,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 

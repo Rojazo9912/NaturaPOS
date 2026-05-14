@@ -36,7 +36,7 @@ export class CashRegisterService {
         status: 'COMPLETED',
         createdAt: { gte: register.openedAt },
       },
-      include: { payments: true },
+      include: { payments: true, items: true },
     });
 
     const totalSales     = orders.reduce((s, o) => s + o.total, 0);
