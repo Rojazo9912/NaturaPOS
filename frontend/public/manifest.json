@@ -1,7 +1,7 @@
 {
-  "name": "Natural OS — Sistema Operativo",
-  "short_name": "Natural OS",
-  "description": "Sistema de punto de venta inteligente para Natural by Nutrit",
+  "name": "Natural",
+  "short_name": "Natural",
+  "description": "Sistema de punto de venta inteligente para Natural",
   "start_url": "/pos",
   "display": "standalone",
   "orientation": "portrait-primary",

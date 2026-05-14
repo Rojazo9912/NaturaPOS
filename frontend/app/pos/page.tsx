@@ -97,18 +97,7 @@ export default function POSPage() {
     if (!catalogLoading) searchRef.current?.focus()
   }, [catalogLoading])
 
-  // Keyboard shortcut: Enter = confirm payment when modal open
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && showPayModal && !paying) {
-        const canPay = paymentMethod !== 'CASH' || !cashGiven || Number(cashGiven) >= finalTotal
-        if (canPay && cart.length > 0) handlePay()
-      }
-      if (e.key === 'Escape' && showPayModal) setShowPayModal(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [showPayModal, paying, paymentMethod, cashGiven, finalTotal, cart])
+
 
   // Customer search — debounced
   useEffect(() => {
@@ -146,6 +135,19 @@ export default function POSPage() {
   const finalTotal  = Math.max(0, subtotal - discount - redeemed)
   const pointsEarned = Math.floor(finalTotal * 0.10)
   const change      = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
+
+  // Keyboard shortcut: Enter = confirm payment when modal open
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && showPayModal && !paying) {
+        const canPay = paymentMethod !== 'CASH' || !cashGiven || Number(cashGiven) >= finalTotal
+        if (canPay && cart.length > 0) handlePay()
+      }
+      if (e.key === 'Escape' && showPayModal) setShowPayModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showPayModal, paying, paymentMethod, cashGiven, finalTotal, cart, handlePay])
 
   const catList = [ALL_CAT, ...categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
 
@@ -259,7 +261,7 @@ export default function POSPage() {
       <header className="flex items-center justify-between px-4 h-14 shrink-0 bg-zinc-950 border-b border-zinc-900 sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-linear-to-br from-green-500 to-lime-600 flex items-center justify-center text-lg">🌿</div>
-          <span className="font-bold text-sm text-white hide-mobile">Natural OS</span>
+          <span className="font-bold text-sm text-white hide-mobile">Natural</span>
           <span className="text-xs text-zinc-500 pl-2 border-l border-zinc-800 hide-mobile">
             {user?.name ? `Cajero: ${user.name}` : 'POS'}
           </span>

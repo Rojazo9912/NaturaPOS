@@ -9,13 +9,13 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Natural OS — Sistema Operativo",
-  description: "Gestión inteligente para Natural by Nutrit",
+  title: "Natural — Sistema Operativo",
+  description: "Gestión inteligente para Natural",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Natural OS",
+    title: "Natural",
   },
   icons: {
     icon: [
@@ -27,8 +27,8 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: 'Natural OS',
-    description: 'Sistema de punto de venta para Natural by Nutrit',
+    title: 'Natural',
+    description: 'Sistema de punto de venta para Natural',
     type: 'website',
     images: [{ url: '/icon-512.png' }],
   },
@@ -50,12 +50,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Natural OS" />
+        <meta name="apple-mobile-web-app-title" content="Natural" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
         <link rel="shortcut icon" href="/icon-192.png" type="image/png" />
-        <meta name="application-name" content="Natural OS" />
+        <meta name="application-name" content="Natural" />
         <meta name="msapplication-TileColor" content="#020b02" />
         <meta name="msapplication-TileImage" content="/icon-192.png" />
       </head>
