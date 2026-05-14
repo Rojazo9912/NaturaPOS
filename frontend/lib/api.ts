@@ -123,6 +123,7 @@ export async function apiCreateOrder(token: string, data: {
   items: Array<{ productId: string; quantity: number; unitPrice: number; subtotal: number }>
   payments: Array<{ method: string; amount: number }>
   pointsEarned?: number
+  pointsRedeemed?: number
 }) {
   const res = await fetch(`${API}/api/v1/orders`, {
     method: 'POST',

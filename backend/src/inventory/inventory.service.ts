@@ -54,6 +54,32 @@ export class InventoryService {
       },
     });
 
+    // ── Motor Antifugas (Security & Audit) ──
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      await this.prisma.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          userId,
+          action: 'INVENTORY_ADJUSTMENT',
+          details: { ...data, branchId },
+        }
+      });
+
+      // Si es un ajuste negativo considerable (pérdida de inventario)
+      if (data.quantity < -5) {
+        await this.prisma.riskAlert.create({
+          data: {
+            organizationId: user.organizationId,
+            branchId,
+            type: 'INVENTORY_MISMATCH',
+            severity: data.quantity <= -20 ? 'HIGH' : 'MEDIUM',
+            description: `Ajuste negativo inusual detectado: ${data.quantity} unidades por ${user.name}. Motivo: ${data.reason || 'N/A'}`,
+          }
+        });
+      }
+    }
+
     return { success: true };
   }
 

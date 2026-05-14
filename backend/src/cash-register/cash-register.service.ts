@@ -86,6 +86,21 @@ export class CashRegisterService {
         ],
       });
 
+      // ── Motor Antifugas (Security & Risk) ──
+      // Si hay un faltante mayor a $50, crear alerta de riesgo
+      if (difference <= -50) {
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        await tx.riskAlert.create({
+          data: {
+            organizationId: user!.organizationId,
+            branchId: register.branchId,
+            type: 'CASH_SHORTAGE',
+            severity: difference <= -200 ? 'CRITICAL' : 'HIGH',
+            description: `Faltante de caja detectado: $${Math.abs(difference)} al cerrar turno. Cajero: ${user!.name}`,
+          }
+        });
+      }
+
       return { register: updated, summary: { totalSales, totalCash, difference, ordersCount: orders.length } };
     });
   }
