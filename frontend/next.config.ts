@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Standalone output para deploy eficiente en Railway/Docker
+  output: "standalone",
 };
 
 export default nextConfig;

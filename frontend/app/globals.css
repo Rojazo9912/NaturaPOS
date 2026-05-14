@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Brand Colors ── */
+  --c-bg:         #020b02;
+  --c-surface-1:  #081008;
+  --c-surface-2:  #0d1a0d;
+  --c-surface-3:  #132013;
+  --c-border:     #1a2e1a;
+  --c-border-2:   #22382a;
+
+  --c-green:       #22c55e;
+  --c-green-light: #4ade80;
+  --c-green-dark:  #15803d;
+  --c-green-glow:  rgba(34, 197, 94, 0.15);
+  --c-lime:        #a3e635;
+  --c-lime-dark:   #84cc16;
+
+  --c-text:           #f0fdf4;
+  --c-text-secondary: #bbf7d0;
+  --c-text-muted:     #6b7280;
+  --c-text-dim:       #374151;
+
+  --c-warning: #f59e0b;
+  --c-error:   #ef4444;
+  --c-info:    #3b82f6;
+
+  /* ── Shape ── */
+  --r-sm:  6px;
+  --r-md:  10px;
+  --r-lg:  14px;
+  --r-xl:  20px;
+  --r-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.6);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,0.7);
+  --shadow-green: 0 0 24px rgba(34,197,94,0.25);
+
+  /* ── Transitions ── */
+  --t-fast: 120ms ease;
+  --t-mid:  200ms ease;
+  --t-slow: 300ms ease;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--c-bg);
+  color: var(--c-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border-2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-green-dark); }
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(30px, -20px) scale(1.1); }
+  66%  { transform: translate(-20px, 10px) scale(0.95); }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-fadeIn    { animation: fadeIn 0.3s ease forwards; }
+.animate-slideRight{ animation: slideInRight 0.25s ease forwards; }
+.spinner           { animation: spin 0.8s linear infinite; }
+
+/* ── Glass card ── */
+.glass {
+  background: rgba(13, 26, 13, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--c-border);
+}
+
+/* ── Green button ── */
+.btn-green {
+  background: linear-gradient(135deg, var(--c-green), var(--c-lime-dark));
+  color: #000;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: var(--t-mid);
+  border-radius: var(--r-md);
+}
+.btn-green:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-green);
+  filter: brightness(1.1);
+}
+.btn-green:active { transform: translateY(0); }
+
+/* ── Ghost button ── */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--c-border-2);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  transition: var(--t-mid);
+  border-radius: var(--r-md);
+}
+.btn-ghost:hover {
+  border-color: var(--c-green);
+  color: var(--c-green);
+  background: var(--c-green-glow);
+}
+
+/* ── Input ── */
+.input-dark {
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  border-radius: var(--r-md);
+  outline: none;
+  transition: var(--t-mid);
+  font-family: inherit;
+}
+.input-dark::placeholder { color: var(--c-text-muted); }
+.input-dark:focus {
+  border-color: var(--c-green);
+  box-shadow: 0 0 0 3px var(--c-green-glow);
 }
