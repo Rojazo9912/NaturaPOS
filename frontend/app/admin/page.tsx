@@ -12,6 +12,9 @@ import {
   apiCreateIngredient,
   apiUpsertRecipe,
   apiGetRecipe,
+  apiGetAuditLogs,
+  apiGetRiskAlerts,
+  apiResolveRiskAlert,
   type Product,
   type Category,
   type Ingredient
@@ -19,7 +22,7 @@ import {
 
 export default function AdminPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES'>('PRODUCTS')
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY'>('PRODUCTS')
   
   // Data
   const [products, setProducts] = useState<Product[]>([])
@@ -67,6 +70,7 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab('PRODUCTS')} className={activeTab === 'PRODUCTS' ? 'btn-green' : 'btn-ghost'}>📦 Productos</button>
           <button onClick={() => setActiveTab('INGREDIENTS')} className={activeTab === 'INGREDIENTS' ? 'btn-green' : 'btn-ghost'}>🌾 Insumos Base</button>
           <button onClick={() => setActiveTab('RECIPES')} className={activeTab === 'RECIPES' ? 'btn-green' : 'btn-ghost'}>🧪 Recetas</button>
+          <button onClick={() => setActiveTab('SECURITY')} className={activeTab === 'SECURITY' ? 'btn-green' : 'btn-ghost'} style={{ marginLeft: 'auto', border: '1px solid #ef444450' }}>🛡️ Auditoría Antifugas</button>
         </div>
 
         {loading ? (
@@ -76,6 +80,7 @@ export default function AdminPage() {
             {activeTab === 'PRODUCTS' && <AdminProducts products={products} categories={categories} onReload={loadData} />}
             {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} />}
             {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} />}
+            {activeTab === 'SECURITY' && <AdminSecurity />}
           </div>
         )}
       </div>
@@ -310,6 +315,118 @@ function AdminRecipes({ products, ingredients }: { products: Product[], ingredie
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── SECURITY TAB ───────────────────────────────────────────────────────────
+function AdminSecurity() {
+  const [alerts, setAlerts] = useState<any[]>([])
+  const [logs, setLogs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadSecurityData = async () => {
+    const token = getToken()
+    if (!token) return
+    setLoading(true)
+    try {
+      const [al, lg] = await Promise.all([
+        apiGetRiskAlerts(token),
+        apiGetAuditLogs(token)
+      ])
+      setAlerts(al)
+      setLogs(lg)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadSecurityData() }, [])
+
+  const resolveAlert = async (id: string) => {
+    const token = getToken()
+    if (!token) return
+    try {
+      await apiResolveRiskAlert(token, id)
+      loadSecurityData()
+    } catch (e) {
+      alert('Error resolviendo alerta')
+    }
+  }
+
+  if (loading) return <div>Cargando reportes de seguridad...</div>
+
+  const activeAlerts = alerts.filter(a => !a.isResolved)
+  const pastAlerts = alerts.filter(a => a.isResolved)
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+      {/* Risk Alerts */}
+      <div>
+        <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: '#ef4444' }}>🚨 Alertas de Riesgo Activas ({activeAlerts.length})</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+          {activeAlerts.length === 0 && <div style={{ color: 'var(--c-text-muted)' }}>No hay alertas activas.</div>}
+          {activeAlerts.map(a => (
+            <div key={a.id} style={{ background: '#ef444410', border: '1px solid #ef444450', padding: '16px', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 700, color: '#ef4444' }}>{a.type} ({a.severity})</span>
+                <span style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>{new Date(a.createdAt).toLocaleString()}</span>
+              </div>
+              <p style={{ fontSize: '14px', marginBottom: '12px' }}>{a.description}</p>
+              <button onClick={() => resolveAlert(a.id)} className="btn-ghost" style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--c-text)' }}>✔️ Marcar como resuelto</button>
+            </div>
+          ))}
+        </div>
+
+        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', color: 'var(--c-text-muted)' }}>Alertas Pasadas</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {pastAlerts.map(a => (
+            <div key={a.id} style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', padding: '12px', borderRadius: '8px', opacity: 0.7 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{a.type}</span>
+                <span style={{ fontSize: '11px' }}>{new Date(a.createdAt).toLocaleDateString()}</span>
+              </div>
+              <p style={{ fontSize: '12px', marginTop: '4px' }}>{a.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Audit Logs */}
+      <div>
+        <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>📜 Registro de Auditoría (Audit Log)</h3>
+        <div style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', borderRadius: '12px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead style={{ background: 'var(--c-surface-2)' }}>
+              <tr>
+                <th style={{ padding: '12px' }}>Fecha</th>
+                <th style={{ padding: '12px' }}>Usuario</th>
+                <th style={{ padding: '12px' }}>Acción</th>
+                <th style={{ padding: '12px' }}>Detalles</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map(l => (
+                <tr key={l.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <td style={{ padding: '12px', color: 'var(--c-text-muted)', whiteSpace: 'nowrap' }}>
+                    {new Date(l.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td style={{ padding: '12px', fontWeight: 600 }}>{l.user?.name}</td>
+                  <td style={{ padding: '12px', color: '#f59e0b', fontWeight: 600 }}>{l.action}</td>
+                  <td style={{ padding: '12px', color: 'var(--c-text-muted)', fontSize: '11px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {JSON.stringify(l.details)}
+                  </td>
+                </tr>
+              ))}
+              {logs.length === 0 && (
+                <tr><td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: 'var(--c-text-muted)' }}>No hay registros recientes</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

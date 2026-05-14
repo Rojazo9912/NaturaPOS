@@ -12,6 +12,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { CashRegisterModule } from './cash-register/cash-register.module';
 
+import { SecurityModule } from './security/security.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
@@ -24,6 +26,7 @@ import { CashRegisterModule } from './cash-register/cash-register.module';
     DashboardModule,
     InventoryModule,
     CashRegisterModule,
+    SecurityModule,
   ],
   controllers: [AppController],
   providers: [AppService],

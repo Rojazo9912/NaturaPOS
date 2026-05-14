@@ -244,6 +244,32 @@ export async function apiGetInventory(token: string): Promise<InventoryItem[]> {
   return res.json()
 }
 
+// ── Security & Audit ─────────────────────────────────────
+export async function apiGetAuditLogs(token: string) {
+  const res = await fetch(`${API}/api/v1/security/audit-logs`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando logs de auditoría')
+  return res.json()
+}
+
+export async function apiGetRiskAlerts(token: string) {
+  const res = await fetch(`${API}/api/v1/security/risk-alerts`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando alertas de riesgo')
+  return res.json()
+}
+
+export async function apiResolveRiskAlert(token: string, id: string) {
+  const res = await fetch(`${API}/api/v1/security/risk-alerts/${id}/resolve`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error resolviendo alerta')
+  return res.json()
+}
+
 // ── Admin (Ingredients & Recipes) ──────────────────────
 export interface Ingredient {
   id: string
