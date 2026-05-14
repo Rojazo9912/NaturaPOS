@@ -61,22 +61,20 @@ En las últimas sesiones logramos implementar toda la infraestructura core y la 
 
 Lo siguiente en la lista son las "Killer Features" que separan a Natural OS de un POS convencional.
 
-### 1. Panel Administrativo (CRUD) — PRIORIDAD ALTA
-*Actualmente los productos, usuarios y recetas están en BD, pero no hay una UI para gestionarlos.*
-- UI para **Gestión de Catálogo**: Crear/Editar productos, precios y categorías.
-- UI para **Gestión de Recetas**: Asignar qué ingredientes y cantidades componen cada producto (para el costeo inteligente).
-- UI para **Insumos/Ingredientes**: Agregar kilos de proteína, litros de leche, etc., al inventario.
+### 2. Panel Administrativo (CRUD) — ✅ COMPLETADO (Fase 2)
+- ✅ UI para **Gestión de Catálogo**: Crear/Editar productos, precios y categorías.
+- ✅ UI para **Gestión de Recetas**: Asignar qué ingredientes y cantidades componen cada producto.
+- ✅ UI para **Insumos/Ingredientes**: Agregar kilos de proteína, litros de leche, etc., al inventario.
 
-### 2. Motor Completo de Lealtad (Natural Points)
-*Actualmente se ganan puntos, pero falta la lógica compleja.*
-- Lógica de canjeo de puntos (`PaymentMethod = POINTS`).
-- Cambios automáticos de Nivel (`CustomerLevel`: Verde -> Gold -> Elite) según visitas/gastos.
+### 3. Motor Completo de Lealtad (Natural Points) — ✅ COMPLETADO (Fase 3)
+- ✅ Lógica de canjeo de puntos integrada al POS (`PaymentMethod = POINTS`).
+- ✅ Cambios automáticos de Nivel (`CustomerLevel`: Verde -> Gold -> Elite) según visitas/gastos.
 
-### 3. Motor Antifugas y Auditoría (Seguridad Empresarial)
+### 4. Motor Antifugas y Auditoría (Seguridad Empresarial) — PRIORIDAD ALTA (Fase 4)
 - Implementar el `AuditLog` en cada acción sensible (ej. cancelar orden, editar precio).
 - Lógica de `RiskAlert`: Asignar un `RiskScore` a los empleados si hacen descuentos manuales seguidos o tienen descuadres constantes en el Corte de Caja.
 
-### 4. Modo Franquicia (Multi-Sucursal)
+### 5. Modo Franquicia y Suscripciones (Fases 4.5 y 5)
 - UI para visualizar métricas comparativas entre sucursales.
 - Transferencia de inventario entre sucursales (`InventoryTransfer`).
 
