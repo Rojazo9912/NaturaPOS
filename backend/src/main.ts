@@ -17,8 +17,9 @@ async function bootstrap() {
     app.use(compression());
 
     // CORS
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, '') || '*';
     app.enableCors({
-      origin: process.env.FRONTEND_URL || '*',
+      origin: frontendUrl === '*' ? '*' : [frontendUrl, `${frontendUrl}/`, 'http://localhost:3000'],
       credentials: true,
     });
 
