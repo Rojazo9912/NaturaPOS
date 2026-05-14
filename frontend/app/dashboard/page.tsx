@@ -6,8 +6,10 @@ import {
   getToken, getUser, clearSession,
   apiGetDashboardSummary, apiGetTopProducts, apiGetSalesByHour,
   apiGetDashboardFranchise,
+  apiGetOrders,
   type DashboardSummary, type TopProduct,
 } from '@/lib/api'
+import { getSocket, disconnectSocket } from '@/lib/socket'
 
 const fmt  = (n: number) => `$${n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const pct  = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(0) + '%' : '0%'

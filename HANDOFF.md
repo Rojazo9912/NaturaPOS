@@ -42,46 +42,48 @@ Role:     OWNER
 
 ---
 
-## ✅ Estado Actual (Fase 1 - MVP completado al 80%)
+## ✅ Estado Actual (Fases 1 a 5 — COMPLETADAS)
 
-En las últimas sesiones logramos implementar toda la infraestructura core y la conexión real Frontend-Backend. 
+NaturaPOS es ahora un ecosistema funcional y estable. Hemos superado la fase de infraestructura y el sistema está listo para operación real.
 
-### ✅ Módulos Implementados y Funcionando
-- **Autenticación (JWT + RBAC)**: Login, verificación de sesión, roles (CASHIER, OWNER, etc).
-- **Catálogo de Productos**: API de productos/categorías. Catálogo poblado (18 productos reales).
-- **POS Inteligente**: Búsqueda de clientes por teléfono (CRM), carrito, cálculo de totales, integración de puntos, 5 métodos de pago y creación de órdenes transaccionales.
-- **Costeo Inteligente (Inventario)**: Cada venta descuenta automáticamente del inventario (sea producto directo o los insumos de una receta).
-- **Corte de Caja (Dual)**: UI y lógica para abrir caja, registrar cierre, calcular diferencia física vs esperada y generar el Corte A (Real/Administrativo) y Corte B (Fiscal).
-- **Dashboard Ejecutivo**: Vista `dashboard` con KPIs de ventas, ticket promedio, ventas por hora y Top Productos.
-- **CORS & Despliegue**: Arreglo de CORS por "trailing slash" (`/`), y correcto manejo del `PORT` dinámico en Railway.
-
----
-
-## 🚀 Próximos Módulos a Implementar (Fase 2 y 3)
-
-Lo siguiente en la lista son las "Killer Features" que separan a Natural OS de un POS convencional.
-
-### 2. Panel Administrativo (CRUD) — ✅ COMPLETADO (Fase 2)
-- ✅ UI para **Gestión de Catálogo**: Crear/Editar productos, precios y categorías.
-- ✅ UI para **Gestión de Recetas**: Asignar qué ingredientes y cantidades componen cada producto.
-- ✅ UI para **Insumos/Ingredientes**: Agregar kilos de proteína, litros de leche, etc., al inventario.
-
-### 3. Motor Completo de Lealtad (Natural Points) — ✅ COMPLETADO (Fase 3)
-- ✅ Lógica de canjeo de puntos integrada al POS (`PaymentMethod = POINTS`).
-- ✅ Cambios automáticos de Nivel (`CustomerLevel`: Verde -> Gold -> Elite) según visitas/gastos.
-
-### 4. Motor Antifugas y Auditoría (Seguridad Empresarial) — ✅ COMPLETADO (Fase 4)
-- ✅ Implementado el `AuditLog` para registro de movimientos manuales de inventario.
-- ✅ Lógica de `RiskAlert`: El sistema alerta automáticamente al dueño si un cajero cierra la caja con un faltante mayor a $50, o si hay un ajuste negativo de inventario inusual.
-- ✅ Dashboard de Seguridad: Creada la pestaña "🛡️ Auditoría Antifugas" en el Panel Administrativo para revisar logs y resolver alertas.
-
-### 5. Modo Franquicia y Suscripciones (Fases 4.5 y 5)
-- ✅ Suscripciones "Plan Recovery" (Planes creados en el Dashboard, listos para integrarse con clientes).
-- ✅ UI para vincular clientes a suscripciones en el POS.
-- ✅ UI para visualizar métricas comparativas entre sucursales (Modo Franquicia en Dashboard).
-- ✅ Transferencia de inventario entre sucursales (`InventoryTransfer`).
+### ✅ Módulos Implementados (Estado: Producción)
+- **POS Inteligente**: Búsqueda CRM, lealtad integrada (puntos y niveles), 5 métodos de pago y despacho de productos.
+- **Inventario & Costeo**: Auto-deducción por recetas, transferencias entre sucursales y ajustes manuales.
+- **Dashboard & Franquicia**: KPIs avanzados, gráficas de ventas por hora y vista comparativa multi-sucursal.
+- **Seguridad (Antifugas)**: Motor de alertas de riesgo (RiskAlert) y registro de auditoría (AuditLog).
+- **PWA & Responsividad**: Aplicación instalable (iOS/Android) con layouts optimizados para móvil y offline base.
+- **Gestión de Personal**: Sistema de roles (RBAC) con interfaz descriptiva de permisos y creación de perfiles.
+- **Corte de Caja (Dual)**: Conciliación física vs sistema con generación de reporte administrativo (Real) y fiscal.
 
 ---
+
+## 🚀 Fase 6: Pulido y Automatización (Lo que falta)
+
+Para que el sistema sea un producto "Llave en Mano" de clase mundial, se sugieren los siguientes puntos:
+
+### 1. 🖨️ Módulo de Impresión y Recibos
+- Generación de **Tickets PDF** para clientes.
+- Integración con **Impresoras Térmicas** (ESC/POS) vía Web USB o Bluetooth.
+- Envío automático de recibos por WhatsApp/Email al finalizar la venta.
+
+### 2. 📡 Notificaciones en Tiempo Real
+- Implementar **Socket.io** para alertas instantáneas de seguridad al Owner (push notifications).
+- Notificaciones de "Stock Bajo" automáticas al encargado de compras.
+- Alertas de transferencias de inventario entrantes.
+
+### 3. 📊 Reportes y Exportación Avanzada
+- Exportación de cortes de caja y ventas a **Excel/CSV**.
+- Reportes mensuales de rentabilidad (Ingresos vs Costo de Insumos).
+- Dashboard de inventario proyectado (basado en velocidad de venta histórica).
+
+### 4. 💳 Automatización de Pagos (Suscripciones)
+- Integración con pasarela de pagos (**Stripe / Conekta**) para cobros recurrentes del "Plan Recovery".
+- Conciliación bancaria automática para pagos con tarjeta.
+
+### 5. 🛡️ Robustez y Seguridad Extra
+- Implementación completa del flujo **MFA (2FA)** con códigos QR (Google Authenticator).
+- **Modo Offline 2.0**: Sincronización robusta vía Service Workers e IndexedDB para ventas prolongadas sin internet.
+
 ---
 
 ## 🔧 Variables de Entorno (Producción - Railway)

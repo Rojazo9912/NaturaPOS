@@ -1,9 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventsGateway } from '../security/events.gateway';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventsGateway: EventsGateway,
+  ) {}
 
   async findAllToday(branchId: string) {
     const today = new Date();
@@ -169,6 +173,9 @@ export class OrdersService {
           });
         }
       }
+
+      // Emit real-time notification
+      this.eventsGateway.emitOrder(user.organizationId, order);
 
       return order;
     });

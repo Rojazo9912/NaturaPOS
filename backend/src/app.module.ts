@@ -16,6 +16,7 @@ import { SecurityModule } from './security/security.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TransfersModule } from './transfers/transfers.module';
 import { UsersModule } from './users/users.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     SubscriptionsModule,
     TransfersModule,
     UsersModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

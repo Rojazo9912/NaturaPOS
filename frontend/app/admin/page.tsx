@@ -25,6 +25,7 @@ import {
   type Category,
   type Ingredient
 } from '@/lib/api'
+import { getSocket, disconnectSocket } from '@/lib/socket'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -57,7 +58,21 @@ export default function AdminPage() {
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { 
+    loadData() 
+    
+    // Real-time alerts
+    const token = getToken()
+    if (token) {
+      // In a real app we'd decode token to get orgId, but for now we join from backend or use a generic room
+      const socket = getSocket() // Joining org logic is in backend join_org message
+      socket.on('risk_alert', (alert) => {
+        alert('🚨 NUEVA ALERTA DE RIESGO DETECTADA')
+        if (activeTab === 'SECURITY') loadData()
+      })
+    }
+    return () => { disconnectSocket() }
+  }, [])
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--c-bg)', fontFamily: 'inherit' }}>

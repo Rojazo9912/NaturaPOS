@@ -7,6 +7,7 @@ import {
   apiGetProducts, apiGetCategories,
   apiSearchCustomers, apiCreateOrder,
   apiGetSubscriptionPlans, apiSubscribeCustomer,
+  apiCreateCheckoutSession,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 
@@ -55,6 +56,10 @@ export default function POSPage() {
   const [plans, setPlans]           = useState<any[]>([])
   const [showSubModal, setShowSubModal] = useState(false)
   const [submittingSub, setSubmittingSub] = useState(false)
+  
+  // Ticket State
+  const [lastOrder, setLastOrder] = useState<any>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
 
   // Catalog state
@@ -156,6 +161,21 @@ export default function POSPage() {
     }
   }
 
+  const handleSubscribeStripe = async (planId: string) => {
+    if (!customer) return
+    const token = getToken()
+    if (!token) return
+    setSubmittingSub(true)
+    try {
+      const { url } = await apiCreateCheckoutSession(token, customer.id, planId)
+      window.location.href = url
+    } catch (e) {
+      alert('Error al iniciar pago con Stripe')
+    } finally {
+      setSubmittingSub(false)
+    }
+  }
+
   async function handlePay() {
     const token = getToken()
     if (!token) return
@@ -167,7 +187,7 @@ export default function POSPage() {
       if (redeemed > 0) payments.push({ method: 'POINTS', amount: redeemed })
       if (finalTotal > 0) payments.push({ method: paymentMethod, amount: finalTotal })
 
-      await apiCreateOrder(token, {
+      const orderData = await apiCreateOrder(token, {
         customerId: customer?.id,
         subtotal,
         total: finalTotal,
@@ -178,20 +198,20 @@ export default function POSPage() {
           subtotal: i.price * i.qty,
         })),
         payments,
-        pointsEarned: customer ? pointsEarned : 0,
+        pointsEarned: customer ? Math.floor(finalTotal * 0.1) : 0,
         pointsRedeemed: redeemed,
       })
-      setOrderDone(true)
-      setTimeout(() => {
-        setCart([])
-        setCustomer(null)
-        setPhoneQuery('')
-        setCashGiven('')
-        setPaymentMethod('CASH')
-        setPointsToRedeem('')
-        setShowPayModal(false)
-        setOrderDone(false)
-      }, 2200)
+
+      setLastOrder(orderData)
+      setShowPayModal(false)
+      setShowSuccess(true)
+      
+      // Reset POS
+      setCart([])
+      setCustomer(null)
+      setPhoneQuery('')
+      setPointsToRedeem('')
+      setCashGiven('')
     } catch (e: any) {
       setPayError(e.message ?? 'Error al procesar el pago')
     } finally {
@@ -540,9 +560,14 @@ export default function POSPage() {
                       ${p.price} / {p.intervalDays} días
                     </div>
                   </div>
-                  <button onClick={() => handleSubscribe(p.id)} className="btn-green" style={{ padding: '6px 16px', fontSize: '12px' }} disabled={submittingSub}>
-                    {submittingSub ? '...' : 'Suscribir'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => handleSubscribe(p.id)} className="btn-green" style={{ padding: '6px 12px', fontSize: '11px' }} disabled={submittingSub}>
+                      Manual
+                    </button>
+                    <button onClick={() => handleSubscribeStripe(p.id)} className="btn-ghost" style={{ padding: '6px 12px', fontSize: '11px', border: '1px solid #6366f1' }} disabled={submittingSub}>
+                      Tarjeta
+                    </button>
+                  </div>
                 </div>
               ))}
               {plans.length === 0 && <div style={{ textAlign: 'center', color: 'var(--c-text-muted)' }}>No hay planes disponibles.</div>}
@@ -551,6 +576,86 @@ export default function POSPage() {
             <button onClick={() => setShowSubModal(false)} className="btn-ghost" style={{ width: '100%', padding: '12px' }}>
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* SUCCESS MODAL / TICKET PREVIEW */}
+      {showSuccess && lastOrder && (
+        <div className="modal-overlay no-print">
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ fontSize: '60px', marginBottom: '10px' }}>✅</div>
+            <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>Venta Exitosa</h2>
+            <p style={{ color: 'var(--c-text-muted)', marginBottom: '24px' }}>
+              Orden #{lastOrder.orderNumber} procesada correctamente.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button onClick={() => window.print()} className="btn-green" style={{ padding: '16px', fontSize: '16px' }}>
+                🖨️ Imprimir Ticket
+              </button>
+              <button onClick={() => setShowSuccess(false)} className="btn-ghost" style={{ padding: '12px' }}>
+                Cerrar y Nueva Venta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HIDDEN PRINTABLE TICKET */}
+      {lastOrder && (
+        <div id="printable-ticket" style={{ display: 'none' }}>
+          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <h2 style={{ margin: '0', fontSize: '18px' }}>NATURAL BY NUTRIT</h2>
+            <p style={{ margin: '0', fontSize: '10px' }}>Sucursal {lastOrder.branch?.name || 'Centro'}</p>
+            <p style={{ margin: '0', fontSize: '10px' }}>{new Date(lastOrder.createdAt).toLocaleString()}</p>
+          </div>
+          
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+          
+          <div style={{ marginBottom: '10px' }}>
+            <p style={{ margin: '0', fontWeight: 'bold' }}>Folio: {lastOrder.orderNumber}</p>
+            <p style={{ margin: '0' }}>Cajero: {lastOrder.cashier?.name || 'User'}</p>
+            {lastOrder.customer && <p style={{ margin: '0' }}>Cliente: {lastOrder.customer.name}</p>}
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #000' }}>
+                <th style={{ textAlign: 'left' }}>Cant</th>
+                <th style={{ textAlign: 'left' }}>Producto</th>
+                <th style={{ textAlign: 'right' }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastOrder.items.map((item: any, idx: number) => (
+                <tr key={idx}>
+                  <td>{item.quantity}</td>
+                  <td>{item.product?.name}</td>
+                  <td style={{ textAlign: 'right' }}>{fmt(item.subtotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ margin: '0' }}>Subtotal: {fmt(lastOrder.subtotal)}</p>
+            {lastOrder.discountAmount > 0 && <p style={{ margin: '0' }}>Descuento: -{fmt(lastOrder.discountAmount)}</p>}
+            <p style={{ margin: '0', fontWeight: 'bold', fontSize: '14px' }}>TOTAL: {fmt(lastOrder.total)}</p>
+          </div>
+
+          <div style={{ marginTop: '10px' }}>
+            <p style={{ margin: '0', fontWeight: 'bold' }}>Pagos:</p>
+            {lastOrder.payments.map((p: any, idx: number) => (
+              <p key={idx} style={{ margin: '0', fontSize: '10px' }}>• {p.method}: {fmt(p.amount)}</p>
+            ))}
+          </div>
+
+          <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '9px' }}>
+            <p style={{ margin: '0' }}>¡Gracias por tu visita!</p>
+            <p style={{ margin: '0' }}>www.naturalbynutrit.com</p>
           </div>
         </div>
       )}

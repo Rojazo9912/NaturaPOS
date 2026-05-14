@@ -137,6 +137,14 @@ export async function apiCreateOrder(token: string, data: {
   return res.json()
 }
 
+export async function apiGetOrders(token: string) {
+  const res = await fetch(`${API}/api/v1/orders`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando órdenes')
+  return res.json()
+}
+
 // ── Dashboard ──────────────────────────────────────────
 export async function apiGetDashboardSummary(token: string): Promise<DashboardSummary> {
   const res = await fetch(`${API}/api/v1/dashboard/summary`, {
@@ -478,5 +486,46 @@ export async function apiUpdateUser(token: string, id: string, data: any) {
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error('Error actualizando usuario')
+  return res.json()
+}
+
+// ── Payments ──────────────────────
+export async function apiCreateCheckoutSession(token: string, customerId: string, planId: string) {
+  const res = await fetch(`${API}/api/v1/payments/checkout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customerId, planId }),
+  })
+  if (!res.ok) throw new Error('Error al iniciar pago')
+  return res.json()
+}
+
+// ── MFA ──────────────────────────
+export async function apiGenerateMfa(token: string) {
+  const res = await fetch(`${API}/api/v1/auth/mfa/generate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error generando MFA')
+  return res.json()
+}
+
+export async function apiEnableMfa(token: string, code: string, secret: string) {
+  const res = await fetch(`${API}/api/v1/auth/mfa/enable`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, secret }),
+  })
+  if (!res.ok) throw new Error('Código inválido')
+  return res.json()
+}
+
+export async function apiLoginMfa(userId: string, code: string) {
+  const res = await fetch(`${API}/api/v1/auth/mfa/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, code }),
+  })
+  if (!res.ok) throw new Error('Código inválido')
   return res.json()
 }
