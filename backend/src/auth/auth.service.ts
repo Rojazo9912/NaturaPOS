@@ -5,7 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import * as otplib from 'otplib';
 import * as QRCode from 'qrcode';
 
-const { authenticator } = otplib;
+const { authenticator } = otplib as any;
 
 @Injectable()
 export class AuthService {
