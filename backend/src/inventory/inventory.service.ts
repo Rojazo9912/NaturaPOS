@@ -62,6 +62,7 @@ export class InventoryService {
           organizationId: user.organizationId,
           userId,
           action: 'INVENTORY_ADJUSTMENT',
+          entity: 'Inventory',
           details: { ...data, branchId },
         }
       });

@@ -30,6 +30,8 @@ model Organization {
   ingredients Ingredient[]
   customers   Customer[]
   subscriptionPlans SubscriptionPlan[]
+  auditLogs   AuditLog[]
+  riskAlerts  RiskAlert[]
 
   @@map("organizations")
 }
@@ -62,6 +64,7 @@ model Branch {
   transfers      InventoryTransfer[] @relation("BranchFrom")
   transfersTo    InventoryTransfer[] @relation("BranchTo")
   auditLogs      AuditLog[]
+  riskAlerts     RiskAlert[]
 
   @@map("branches")
 }
@@ -92,6 +95,7 @@ model User {
   auditLogs      AuditLog[]
   cashRegisters  CashRegister[]
   discounts      Discount[]
+  riskAlerts     RiskAlert[]
 
   @@map("users")
 }
@@ -623,20 +627,23 @@ enum SubscriptionStatus {
 // ─────────────────────────────────────────────
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  branchId  String?
-  userId    String?
-  action    String   // Qué acción se realizó
-  entity    String   // Qué entidad fue afectada
-  entityId  String?
-  oldValue  Json?
-  newValue  Json?
-  ip        String?
-  device    String?
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String
+  branchId       String?
+  userId         String?
+  action         String   // Qué acción se realizó
+  entity         String   // Qué entidad fue afectada
+  entityId       String?
+  oldValue       Json?
+  newValue       Json?
+  details        Json?    // Detalles adicionales
+  ip             String?
+  device         String?
+  createdAt      DateTime @default(now())
 
-  branch    Branch? @relation(fields: [branchId], references: [id])
-  user      User?   @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  branch         Branch?      @relation(fields: [branchId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
 }
@@ -646,16 +653,21 @@ model AuditLog {
 // ─────────────────────────────────────────────
 
 model RiskAlert {
-  id          String    @id @default(cuid())
-  branchId    String
-  userId      String?
-  type        RiskType
-  severity    Severity
-  description String
-  isResolved  Boolean   @default(false)
-  resolvedAt  DateTime?
-  resolvedBy  String?
-  createdAt   DateTime  @default(now())
+  id             String    @id @default(cuid())
+  organizationId String
+  branchId       String?
+  userId         String?
+  type           RiskType
+  severity       Severity
+  description    String
+  isResolved     Boolean   @default(false)
+  resolvedAt     DateTime?
+  resolvedBy     String?
+  createdAt      DateTime  @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  branch         Branch?      @relation(fields: [branchId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
 
   @@map("risk_alerts")
 }
@@ -668,6 +680,8 @@ enum RiskType {
   ALTERED_TICKET          // Ticket alterado
   UNUSUAL_HOUR_ACCESS     // Acceso fuera de horario
   REPEATED_REFUNDS        // Devoluciones repetidas
+  INVENTORY_MISMATCH      // Ajuste negativo de inventario
+  CASH_SHORTAGE           // Faltante de caja
 }
 
 enum Severity {
