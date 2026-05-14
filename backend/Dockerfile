@@ -33,6 +33,7 @@ RUN npm prune --production
 # Setear producción DESPUÉS del build
 ENV NODE_ENV=production
 
-EXPOSE 3001
+# Railway asigna PORT automáticamente — no hardcodear
+EXPOSE ${PORT:-8080}
 
 CMD ["node", "dist/main.js"]
