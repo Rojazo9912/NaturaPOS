@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  getToken, clearSession,
+  getToken, getUser, clearSession,
   apiGetDashboardSummary, apiGetTopProducts, apiGetSalesByHour,
+  apiGetDashboardFranchise,
   type DashboardSummary, type TopProduct,
 } from '@/lib/api'
 

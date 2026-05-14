@@ -345,29 +345,31 @@ export default function POSPage() {
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>Buscando...</div>
             )}
             {!customerLoading && customer && (
-              <div style={{
-                marginTop: '10px', padding: '12px 14px', borderRadius: 'var(--r-md)',
-                background: 'var(--c-surface-2)', border: `1px solid ${LEVEL_COLORS[customer.level] ?? '#333'}40`,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                animation: 'fadeIn 0.2s ease',
-              }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text)' }}>{customer.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>
-                    ⭐ {customer.points.toFixed(0)} pts · {customer.totalVisits} visitas
-                  </div>
-                </div>
-                <span style={{
-                  padding: '3px 10px', borderRadius: 'var(--r-full)', fontSize: '11px', fontWeight: 700,
-                  background: `${LEVEL_COLORS[customer.level] ?? '#555'}20`, color: LEVEL_COLORS[customer.level] ?? '#aaa',
+              <>
+                <div style={{
+                  marginTop: '10px', padding: '12px 14px', borderRadius: 'var(--r-md)',
+                  background: 'var(--c-surface-2)', border: `1px solid ${LEVEL_COLORS[customer.level] ?? '#333'}40`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  animation: 'fadeIn 0.2s ease',
                 }}>
-                  {customer.level}
-                </span>
-              </div>
-              <button onClick={handleOpenSubModal} className="btn-ghost"
-                      style={{ width: '100%', marginTop: '10px', fontSize: '11px', padding: '6px', color: 'var(--c-green)', borderColor: 'var(--c-green-glow)' }}>
-                ⭐ Gestionar Suscripción (Plan Recovery)
-              </button>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--c-text)' }}>{customer.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>
+                      ⭐ {customer.points.toFixed(0)} pts · {customer.totalVisits} visitas
+                    </div>
+                  </div>
+                  <span style={{
+                    padding: '3px 10px', borderRadius: 'var(--r-full)', fontSize: '11px', fontWeight: 700,
+                    background: `${LEVEL_COLORS[customer.level] ?? '#555'}20`, color: LEVEL_COLORS[customer.level] ?? '#aaa',
+                  }}>
+                    {customer.level}
+                  </span>
+                </div>
+                <button onClick={handleOpenSubModal} className="btn-ghost"
+                        style={{ width: '100%', marginTop: '10px', fontSize: '11px', padding: '6px', color: 'var(--c-green)', borderColor: 'var(--c-green-glow)' }}>
+                  ⭐ Gestionar Suscripción (Plan Recovery)
+                </button>
+              </>
             )}
             {!customerLoading && phoneQuery.length >= 6 && !customer && (
               <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>
