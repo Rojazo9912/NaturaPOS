@@ -293,6 +293,7 @@ export interface Ingredient {
   name: string
   unit: string
   costPerUnit: number
+  stock: number
   minStock: number
 }
 

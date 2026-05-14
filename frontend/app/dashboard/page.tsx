@@ -111,8 +111,8 @@ export default function DashboardPage() {
           </span>
         </div>
         <div className="flex gap-3 items-center">
-          <button onClick={handleExportCSV} className="hidden md:flex px-3.5 py-1.5 rounded-md text-xs font-semibold bg-zinc-900 text-zinc-300 border border-zinc-800 hover:bg-zinc-800 gap-2 items-center">
-            📥 Exportar CSV
+          <button onClick={handleExportCSV} className="flex px-3.5 py-1.5 rounded-md text-xs font-semibold bg-zinc-900 text-zinc-300 border border-zinc-800 hover:bg-zinc-800 gap-2 items-center">
+            📥 Reporte CSV
           </button>
           <a href="/pos" className="px-3.5 py-1.5 rounded-md text-xs font-semibold bg-green-500 text-black no-underline hover:brightness-110">💳 Ir al POS</a>
           <button onClick={() => { clearSession(); router.push('/login') }}
