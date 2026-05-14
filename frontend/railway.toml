@@ -9,3 +9,6 @@ healthcheckPath = "/"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+
+[env]
+NEXT_PUBLIC_API_URL = "https://naturapos-production.up.railway.app"
