@@ -20,6 +20,12 @@ export class ProductsController {
     return this.productsService.findCategories(user.organizationId);
   }
 
+  @Post('categories')
+  @Roles('ADMIN', 'OWNER')
+  createCategory(@CurrentUser() user: any, @Body() dto: any) {
+    return this.productsService.createCategory(user.organizationId, dto);
+  }
+
   @Post()
   @Roles('ADMIN', 'OWNER')
   create(@CurrentUser() user: any, @Body() createProductDto: any) {

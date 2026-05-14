@@ -79,6 +79,19 @@ export async function apiGetProfile(token: string) {
   return res.json()
 }
 
+export async function apiChangePassword(token: string, currentPassword: string, newPassword: string) {
+  const res = await fetch(`${API}/api/v1/auth/change-password`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as any).message || 'Error cambiando contraseña')
+  }
+  return res.json()
+}
+
 // ── Products ───────────────────────────────────────────
 export async function apiGetProducts(token: string): Promise<Product[]> {
   const res = await fetch(`${API}/api/v1/products`, {
@@ -93,6 +106,16 @@ export async function apiGetCategories(token: string): Promise<Category[]> {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error('Error cargando categorías')
+  return res.json()
+}
+
+export async function apiCreateCategory(token: string, data: { name: string; emoji?: string }) {
+  const res = await fetch(`${API}/api/v1/products/categories`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error creando categoría')
   return res.json()
 }
 

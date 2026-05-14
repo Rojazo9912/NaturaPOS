@@ -250,6 +250,7 @@ export default function POSPage() {
           </span>
           <div className="flex gap-3 md:gap-4 hide-mobile">
             <a href="/cash-register" className="text-xs text-zinc-400 no-underline hover:text-green-500">💰 Caja</a>
+            <a href="/ventas" className="text-xs text-zinc-400 no-underline hover:text-green-500">📋 Ventas</a>
             <a href="/inventory" className="text-xs text-zinc-400 no-underline hover:text-green-500">📦 Stock</a>
             <a href="/dashboard" className="text-xs text-zinc-400 no-underline hover:text-green-500">📊 Dashboard</a>
           </div>
@@ -594,20 +595,65 @@ export default function POSPage() {
       {/* SUCCESS MODAL / TICKET PREVIEW */}
       {showSuccess && lastOrder && (
         <div className="modal-overlay no-print">
-          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div style={{ fontSize: '60px', marginBottom: '10px' }}>✅</div>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>Venta Exitosa</h2>
-            <p style={{ color: 'var(--c-text-muted)', marginBottom: '24px' }}>
-              Orden #{lastOrder.orderNumber} procesada correctamente.
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button onClick={() => window.print()} className="btn-green" style={{ padding: '16px', fontSize: '16px' }}>
+          <div className="modal-content" style={{ maxWidth: '420px', padding: '0', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #166534, #15803d)', padding: '24px', textAlign: 'center' }}>
+              <div style={{ fontSize: '40px', marginBottom: '8px' }}>✅</div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#fff', margin: 0 }}>¡Venta Exitosa!</h2>
+              <div style={{ fontSize: '12px', color: '#bbf7d0', marginTop: '4px', fontFamily: 'monospace' }}>{lastOrder.orderNumber}</div>
+            </div>
+
+            {/* Ticket Preview */}
+            <div style={{ padding: '20px', background: 'var(--c-surface-1)', maxHeight: '380px', overflowY: 'auto' }}>
+              {lastOrder.customer && (
+                <div style={{ padding: '10px', background: 'rgba(34,197,94,0.08)', borderRadius: '10px', marginBottom: '12px', fontSize: '12px' }}>
+                  👤 <strong>{lastOrder.customer.name}</strong> · +{lastOrder.pointsEarned || 0} puntos Natural
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                {lastOrder.items?.map((item: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: 'var(--c-text-muted)' }}>{item.quantity}× {item.product?.name || 'Producto'}</span>
+                    <span style={{ fontWeight: 600 }}>{fmt(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ borderTop: '1px dashed var(--c-border)', paddingTop: '10px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '4px' }}>
+                  <span>Subtotal</span><span>{fmt(lastOrder.subtotal)}</span>
+                </div>
+                {(lastOrder.discountAmount || 0) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#f59e0b', marginBottom: '4px' }}>
+                    <span>Descuento 5%</span><span>-{fmt(lastOrder.discountAmount)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 900, color: 'var(--c-green)', marginTop: '6px' }}>
+                  <span>TOTAL</span><span>{fmt(lastOrder.total)}</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '11px', color: 'var(--c-text-muted)' }}>
+                {lastOrder.payments?.map((p: any, i: number) => (
+                  <div key={i}>💳 {p.method}: {fmt(p.amount)}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--c-surface-1)', borderTop: '1px solid var(--c-border)' }}>
+              <button onClick={() => window.print()} className="btn-green" style={{ padding: '14px', fontSize: '15px' }}>
                 🖨️ Imprimir Ticket
               </button>
-              <button onClick={() => setShowSuccess(false)} className="btn-ghost" style={{ padding: '12px' }}>
-                Cerrar y Nueva Venta
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setShowSuccess(false)} className="btn-ghost" style={{ flex: 1, padding: '12px' }}>
+                  Nueva Venta
+                </button>
+                <a href="/ventas" style={{ flex: 1, padding: '12px', textAlign: 'center', borderRadius: '10px', background: 'var(--c-surface-2)', border: '1px solid var(--c-border)', color: 'var(--c-text)', fontSize: '13px', textDecoration: 'none', fontWeight: 600 }}>
+                  📋 Ver Ventas
+                </a>
+              </div>
             </div>
           </div>
         </div>

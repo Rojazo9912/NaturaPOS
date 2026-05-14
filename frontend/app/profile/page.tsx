@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getToken, getUser, clearSession, apiGetProfile } from '@/lib/api'
+import { getToken, getUser, clearSession, apiGetProfile, apiChangePassword } from '@/lib/api'
 
 const ROLE_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
   CASHIER:    { label: 'Cajero',        color: '#6366f1', emoji: '🧾' },
@@ -163,12 +163,18 @@ export default function ProfilePage() {
                 className="btn-green"
                 style={{ padding: '12px', marginTop: '4px' }}
                 onClick={async () => {
+                  setPwError(''); setPwSuccess(false)
                   if (pwForm.next !== pwForm.confirm) { setPwError('Las contraseñas no coinciden'); return }
                   if (pwForm.next.length < 6) { setPwError('La contraseña debe tener al menos 6 caracteres'); return }
-                  // TODO: call apiChangePassword when endpoint exists
-                  setPwSuccess(true)
-                  setPwError('')
-                  setPwForm({ current: '', next: '', confirm: '' })
+                  const token = getToken()
+                  if (!token) return
+                  try {
+                    await apiChangePassword(token, pwForm.current, pwForm.next)
+                    setPwSuccess(true)
+                    setPwForm({ current: '', next: '', confirm: '' })
+                  } catch (e: any) {
+                    setPwError(e.message)
+                  }
                 }}
               >
                 Actualizar Contraseña

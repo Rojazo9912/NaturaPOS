@@ -22,6 +22,7 @@ import {
   apiCreateUser,
   apiUpdateUser,
   apiAdjustInventory,
+  apiCreateCategory,
   type Product,
   type Category,
   type Ingredient
@@ -30,7 +31,7 @@ import { getSocket, disconnectSocket } from '@/lib/socket'
 
 export default function AdminPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY' | 'SUBSCRIPTIONS' | 'USERS'>('PRODUCTS')
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'CATEGORIES' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY' | 'SUBSCRIPTIONS' | 'USERS'>('PRODUCTS')
   
   // Data
   const [products, setProducts] = useState<Product[]>([])
@@ -67,8 +68,8 @@ export default function AdminPage() {
     if (token) {
       // In a real app we'd decode token to get orgId, but for now we join from backend or use a generic room
       const socket = getSocket() // Joining org logic is in backend join_org message
-      socket.on('risk_alert', (alert) => {
-        alert('🚨 NUEVA ALERTA DE RIESGO DETECTADA')
+      socket.on('risk_alert', (riskAlert: any) => {
+        console.warn('🚨 NUEVA ALERTA DE RIESGO:', riskAlert)
         if (activeTab === 'SECURITY') loadData()
       })
     }
@@ -101,6 +102,7 @@ export default function AdminPage() {
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: '1px solid var(--c-border)', paddingBottom: '16px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
           <button onClick={() => setActiveTab('PRODUCTS')} className={activeTab === 'PRODUCTS' ? 'btn-green' : 'btn-ghost'}>📦 Productos</button>
+          <button onClick={() => setActiveTab('CATEGORIES')} className={activeTab === 'CATEGORIES' ? 'btn-green' : 'btn-ghost'}>🏷️ Categorías</button>
           <button onClick={() => setActiveTab('INGREDIENTS')} className={activeTab === 'INGREDIENTS' ? 'btn-green' : 'btn-ghost'}>🌾 Insumos Base</button>
           <button onClick={() => setActiveTab('RECIPES')} className={activeTab === 'RECIPES' ? 'btn-green' : 'btn-ghost'}>🧪 Recetas</button>
           <button onClick={() => setActiveTab('SUBSCRIPTIONS')} className={activeTab === 'SUBSCRIPTIONS' ? 'btn-green' : 'btn-ghost'}>⭐ Planes de Suscripción</button>
@@ -113,12 +115,77 @@ export default function AdminPage() {
         ) : (
           <div>
             {activeTab === 'PRODUCTS' && <AdminProducts products={products} categories={categories} onReload={loadData} />}
+            {activeTab === 'CATEGORIES' && <AdminCategories categories={categories} onReload={loadData} />}
             {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} />}
             {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} />}
             {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptions />}
             {activeTab === 'USERS' && <AdminUsers />}
             {activeTab === 'SECURITY' && <AdminSecurity />}
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── CATEGORIES TAB ─────────────────────────────────────────────────────────
+function AdminCategories({ categories, onReload }: { categories: Category[], onReload: () => void }) {
+  const [form, setForm] = useState({ name: '', emoji: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+    const token = getToken()
+    if (!token) return
+    setSubmitting(true)
+    try {
+      await apiCreateCategory(token, { name: form.name, emoji: form.emoji || undefined })
+      setForm({ name: '', emoji: '' })
+      onReload()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="admin-grid">
+      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+        <h3 style={{ fontWeight: 600, marginBottom: '20px' }}>Nueva Categoría</h3>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <input required placeholder="Nombre (ej. Proteínas)" className="input-dark" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          <input placeholder="Emoji (ej. 💪)" className="input-dark" value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })} maxLength={4} />
+          <button type="submit" disabled={submitting} className="btn-green">
+            {submitting ? 'Creando...' : '+ Crear Categoría'}
+          </button>
+        </form>
+      </div>
+
+      <div style={{ background: 'var(--c-surface-1)', borderRadius: '16px', border: '1px solid var(--c-border)', overflow: 'hidden' }}>
+        {categories.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--c-text-muted)', fontSize: '13px' }}>
+            🏷️ No hay categorías aún. ¡Crea la primera!
+          </div>
+        ) : (
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <thead style={{ background: 'var(--c-surface-2)' }}>
+              <tr>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Emoji</th>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Nombre</th>
+                <th style={{ padding: '16px', fontSize: '13px' }}>Orden</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map(c => (
+                <tr key={c.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  <td style={{ padding: '16px', fontSize: '22px' }}>{c.emoji ?? '📦'}</td>
+                  <td style={{ padding: '16px', fontWeight: 600 }}>{c.name}</td>
+                  <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{c.sortOrder}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
@@ -186,6 +253,54 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  )
+}
+
+// ── BULK STOCK ENTRY ───────────────────────────────────────────────────────
+function BulkStockEntry({ ingredients, onDone }: { ingredients: Ingredient[]; onDone: () => void }) {
+  const [entries, setEntries] = useState([{ ingredientId: '', qty: '' }])
+  const [reason, setReason] = useState('Compra de mercancía')
+  const [busy, setBusy] = useState(false)
+  const [success, setSuccess] = useState(false)
+
+  const handleSubmit = async () => {
+    const token = getToken()
+    if (!token) return
+    const valid = entries.filter(e => e.ingredientId && Number(e.qty) > 0)
+    if (valid.length === 0) return
+    setBusy(true); setSuccess(false)
+    try {
+      await Promise.all(valid.map(e => apiAdjustInventory(token, { ingredientId: e.ingredientId, quantity: Number(e.qty), reason })))
+      setEntries([{ ingredientId: '', qty: '' }])
+      setReason('Compra de mercancía')
+      setSuccess(true)
+      onDone()
+      setTimeout(() => setSuccess(false), 3000)
+    } catch { /* ignore */ }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div>
+      {success && <div style={{ padding: '8px 12px', background: 'rgba(34,197,94,0.1)', color: '#22c55e', borderRadius: '8px', fontSize: '12px', marginBottom: '10px' }}>✅ Stock actualizado correctamente</div>}
+      {entries.map((entry, idx) => (
+        <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+          <select className="input-dark" style={{ flex: 1, padding: '8px', fontSize: '12px' }} value={entry.ingredientId} onChange={e => { const n = [...entries]; n[idx].ingredientId = e.target.value; setEntries(n) }}>
+            <option value="">-- Seleccionar insumo --</option>
+            {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+          </select>
+          <input type="number" min="1" className="input-dark" placeholder="Cantidad" style={{ width: '80px', padding: '8px', fontSize: '12px' }} value={entry.qty} onChange={e => { const n = [...entries]; n[idx].qty = e.target.value; setEntries(n) }} />
+          {entries.length > 1 && <button onClick={() => setEntries(entries.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px' }}>×</button>}
+        </div>
+      ))}
+      <input className="input-dark" style={{ width: '100%', padding: '8px', fontSize: '12px', marginBottom: '10px' }} placeholder="Motivo (ej. Compra semanal)" value={reason} onChange={e => setReason(e.target.value)} />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={() => setEntries([...entries, { ingredientId: '', qty: '' }])} className="btn-ghost" style={{ fontSize: '12px', padding: '8px 12px' }}>+ Otro insumo</button>
+        <button onClick={handleSubmit} disabled={busy} className="btn-green" style={{ fontSize: '12px', padding: '8px 16px', flex: 1 }}>
+          {busy ? 'Guardando...' : '📥 Registrar Entrada'}
+        </button>
       </div>
     </div>
   )
@@ -266,6 +381,11 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
           <input className="input-dark" type="number" placeholder="Stock mínimo alerta" value={form.minStock} onChange={e=>setForm({...form, minStock: e.target.value})} required />
           <button type="submit" disabled={submitting} className="btn-green">Crear Insumo</button>
         </form>
+
+        <div style={{ marginTop: '24px', borderTop: '1px solid var(--c-border)', paddingTop: '20px' }}>
+          <h4 style={{ fontWeight: 600, fontSize: '13px', marginBottom: '12px', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>📦 Entrada de Mercancía</h4>
+          <BulkStockEntry ingredients={ingredients} onDone={onReload} />
+        </div>
       </div>
 
       <div style={{ background: 'var(--c-surface-1)', borderRadius: '16px', border: '1px solid var(--c-border)', overflow: 'hidden' }}>

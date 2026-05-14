@@ -19,6 +19,18 @@ export class ProductsService {
     });
   }
 
+  async createCategory(organizationId: string, data: { name: string; emoji?: string }) {
+    const count = await this.prisma.category.count({ where: { organizationId } });
+    return this.prisma.category.create({
+      data: {
+        organizationId,
+        name: data.name,
+        emoji: data.emoji || '📦',
+        sortOrder: count + 1,
+      },
+    });
+  }
+
   async create(organizationId: string, data: any) {
     return this.prisma.product.create({
       data: {

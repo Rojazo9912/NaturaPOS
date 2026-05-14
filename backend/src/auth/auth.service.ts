@@ -102,4 +102,18 @@ export class AuthService {
       },
     });
   }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) throw new UnauthorizedException('Contraseña actual incorrecta');
+
+    if (newPassword.length < 6) throw new UnauthorizedException('La nueva contraseña debe tener al menos 6 caracteres');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    return { success: true, message: 'Contraseña actualizada correctamente' };
+  }
 }
