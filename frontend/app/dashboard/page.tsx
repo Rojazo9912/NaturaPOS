@@ -49,7 +49,52 @@ export default function DashboardPage() {
       if (franchise) setFranchiseData(franchise)
     }).catch(e => setError(e.message))
       .finally(() => setLoading(false))
+
+    // Real-time updates
+    const socket = getSocket(user.organizationId)
+    socket.on('new_order', () => {
+      // Refresh only summary and hour chart
+      apiGetDashboardSummary(token).then(setSummary)
+      apiGetSalesByHour(token).then(setSalesByHour)
+    })
+    socket.on('risk_alert', (alert) => {
+      window.alert(`🚨 Alerta de Riesgo: ${alert.description}`)
+    })
+
+    return () => {
+      socket.off('new_order')
+      socket.off('risk_alert')
+    }
   }, [router])
+
+  const handleExportCSV = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const orders = await apiGetOrders(token)
+      const headers = ['Folio', 'Fecha', 'Sucursal', 'Cajero', 'Cliente', 'Total', 'Metodo Pago']
+      const rows = orders.map((o: any) => [
+        o.orderNumber,
+        new Date(o.createdAt).toLocaleString(),
+        o.branch?.name || '—',
+        o.user?.name || '—',
+        o.customer?.name || 'General',
+        o.total,
+        o.paymentMethod
+      ])
+      
+      const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.setAttribute('download', `Ventas_NaturaPOS_${new Date().toLocaleDateString()}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (e) {
+      alert('Error exportando CSV')
+    }
+  }
 
   const maxHourRevenue = Math.max(...salesByHour.map(h => h.revenue), 1)
 
@@ -66,6 +111,9 @@ export default function DashboardPage() {
           </span>
         </div>
         <div className="flex gap-3 items-center">
+          <button onClick={handleExportCSV} className="hidden md:flex px-3.5 py-1.5 rounded-md text-xs font-semibold bg-zinc-900 text-zinc-300 border border-zinc-800 hover:bg-zinc-800 gap-2 items-center">
+            📥 Exportar CSV
+          </button>
           <a href="/pos" className="px-3.5 py-1.5 rounded-md text-xs font-semibold bg-green-500 text-black no-underline hover:brightness-110">💳 Ir al POS</a>
           <button onClick={() => { clearSession(); router.push('/login') }}
             className="text-xs text-zinc-500 bg-transparent border-none cursor-pointer hover:text-white">

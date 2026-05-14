@@ -227,9 +227,10 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
           <thead style={{ background: 'var(--c-surface-2)' }}>
             <tr>
               <th style={{ padding: '16px', fontSize: '13px' }}>Insumo</th>
-              <th style={{ padding: '16px', fontSize: '13px' }}>Unidad de Medida</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Unidad</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Costo/Unidad</th>
-              <th style={{ padding: '16px', fontSize: '13px' }}>Alerta Min</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Stock Actual</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Mínimo</th>
             </tr>
           </thead>
           <tbody>
@@ -238,7 +239,15 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
                 <td style={{ padding: '16px', fontWeight: 600 }}>{i.name}</td>
                 <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{i.unit}</td>
                 <td style={{ padding: '16px' }}>${i.costPerUnit}</td>
-                <td style={{ padding: '16px', color: '#ef4444' }}>{i.minStock}</td>
+                <td style={{ padding: '16px' }}>
+                  <span style={{ 
+                    fontWeight: 800, 
+                    color: (i.stock || 0) <= (i.minStock || 0) ? '#ef4444' : 'var(--c-green)'
+                  }}>
+                    {i.stock || 0}
+                  </span>
+                </td>
+                <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>{i.minStock}</td>
               </tr>
             ))}
           </tbody>
