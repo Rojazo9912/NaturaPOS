@@ -115,7 +115,7 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '32px' }}>
+    <div className="admin-grid">
       <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Nuevo Producto</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -181,7 +181,7 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '32px' }}>
+    <div className="admin-grid">
       <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Nuevo Insumo Base</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -362,7 +362,7 @@ function AdminSecurity() {
   const pastAlerts = alerts.filter(a => a.isResolved)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+    <div className="admin-split">
       {/* Risk Alerts */}
       <div>
         <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: '#ef4444' }}>🚨 Alertas de Riesgo Activas ({activeAlerts.length})</h3>

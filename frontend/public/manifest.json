@@ -1,0 +1,21 @@
+{
+  "name": "Natural OS",
+  "short_name": "Natural",
+  "description": "Sistema de punto de venta inteligente",
+  "start_url": "/pos",
+  "display": "standalone",
+  "background_color": "#020b02",
+  "theme_color": "#020b02",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/Rojazo9912/NaturaPOS/main/frontend/public/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/Rojazo9912/NaturaPOS/main/frontend/public/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

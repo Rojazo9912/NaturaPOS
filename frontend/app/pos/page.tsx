@@ -214,10 +214,10 @@ export default function POSPage() {
         </div>
       </header>
 
-      <div style={S.main}>
+      <div className="pos-layout">
 
         {/* ── LEFT: Product Catalog ── */}
-        <div style={S.left}>
+        <div className="pos-catalog">
 
           {/* Search + Categories */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border)', flexShrink: 0 }}>
@@ -294,7 +294,7 @@ export default function POSPage() {
         </div>
 
         {/* ── RIGHT: Cart ── */}
-        <div style={S.right}>
+        <div className="pos-cart">
 
           {/* Customer Search */}
           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--c-border)', flexShrink: 0 }}>

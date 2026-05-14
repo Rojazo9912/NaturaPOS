@@ -11,6 +11,20 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Natural OS — Sistema Operativo Wellness',
   description: 'Sistema de punto de venta inteligente para Natural by Nutrit',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Natural OS',
+  },
+}
+
+export const viewport = {
+  themeColor: '#020b02',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
