@@ -17,6 +17,10 @@ import {
   apiResolveRiskAlert,
   apiGetSubscriptionPlans,
   apiCreateSubscriptionPlan,
+  apiGetUsers,
+  apiGetBranches,
+  apiCreateUser,
+  apiUpdateUser,
   type Product,
   type Category,
   type Ingredient
@@ -24,7 +28,7 @@ import {
 
 export default function AdminPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY' | 'SUBSCRIPTIONS'>('PRODUCTS')
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY' | 'SUBSCRIPTIONS' | 'USERS'>('PRODUCTS')
   
   // Data
   const [products, setProducts] = useState<Product[]>([])
@@ -73,6 +77,7 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab('INGREDIENTS')} className={activeTab === 'INGREDIENTS' ? 'btn-green' : 'btn-ghost'}>🌾 Insumos Base</button>
           <button onClick={() => setActiveTab('RECIPES')} className={activeTab === 'RECIPES' ? 'btn-green' : 'btn-ghost'}>🧪 Recetas</button>
           <button onClick={() => setActiveTab('SUBSCRIPTIONS')} className={activeTab === 'SUBSCRIPTIONS' ? 'btn-green' : 'btn-ghost'}>⭐ Planes de Suscripción</button>
+          <button onClick={() => setActiveTab('USERS')} className={activeTab === 'USERS' ? 'btn-green' : 'btn-ghost'}>👥 Usuarios</button>
           <button onClick={() => setActiveTab('SECURITY')} className={activeTab === 'SECURITY' ? 'btn-green' : 'btn-ghost'} style={{ marginLeft: 'auto', border: '1px solid #ef444450' }}>🛡️ Auditoría Antifugas</button>
         </div>
 
@@ -84,6 +89,7 @@ export default function AdminPage() {
             {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} />}
             {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} />}
             {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptions />}
+            {activeTab === 'USERS' && <AdminUsers />}
             {activeTab === 'SECURITY' && <AdminSecurity />}
           </div>
         )}
@@ -535,6 +541,182 @@ function AdminSubscriptions() {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+// ── USERS TAB ───────────────────────────────────────────────────────────
+const ROLE_INFO: Record<string, { label: string, color: string, can: string[], cannot: string[] }> = {
+  CASHIER: {
+    label: 'Cajero',
+    color: '#22c55e',
+    can: ['Cobrar en POS', 'Ver inventario sucursal', 'Realizar corte de caja'],
+    cannot: ['Ver métricas globales', 'Editar productos', 'Gestionar otros usuarios'],
+  },
+  SUPERVISOR: {
+    label: 'Supervisor',
+    color: '#3b82f6',
+    can: ['Ver todos los cortes de caja', 'Autorizar descuentos manuales', 'Gestionar inventario'],
+    cannot: ['Configuración global del sistema', 'Ver métricas de franquicia'],
+  },
+  REGIONAL_MANAGER: {
+    label: 'Gerente Regional',
+    color: '#8b5cf6',
+    can: ['Ver métricas de múltiples sucursales', 'Gestionar transferencias', 'Auditar inventarios'],
+    cannot: ['Editar recetas core', 'Modificar planes de suscripción'],
+  },
+  ADMIN: {
+    label: 'Administrador',
+    color: '#f59e0b',
+    can: ['Gestión total de catálogo', 'Configurar recetas', 'Crear usuarios', 'Ver auditoría'],
+    cannot: ['Ver métricas de Modo Franquicia (solo Owner)'],
+  },
+  OWNER: {
+    label: 'Dueño / CEO',
+    color: '#ef4444',
+    can: ['Acceso absoluto al sistema', 'Modo Franquicia', 'Configuración global', 'Métricas avanzadas'],
+    cannot: [],
+  },
+}
+
+function AdminUsers() {
+  const [users, setUsers] = useState<any[]>([])
+  const [branches, setBranches] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'CASHIER', branchId: '', phone: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadUsers = async () => {
+    const token = getToken()
+    if (!token) return
+    setLoading(true)
+    try {
+      const [u, b] = await Promise.all([apiGetUsers(token), apiGetBranches(token)])
+      setUsers(u)
+      setBranches(b)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadUsers() }, [])
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+    const token = getToken()
+    if (!token) return
+    setSubmitting(true)
+    try {
+      await apiCreateUser(token, form)
+      alert('Usuario creado con éxito')
+      setForm({ name: '', email: '', password: '', role: 'CASHIER', branchId: '', phone: '' })
+      loadUsers()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) return <div>Cargando usuarios...</div>
+
+  const selectedRole = ROLE_INFO[form.role]
+
+  return (
+    <div className="admin-grid">
+      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+        <h3 style={{ fontWeight: 600, marginBottom: '20px' }}>Nuevo Usuario</h3>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <input required placeholder="Nombre Completo" className="input-dark" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} />
+          <input required type="email" placeholder="Correo Electrónico" className="input-dark" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} />
+          <input required type="password" placeholder="Contraseña Temporal" className="input-dark" value={form.password} onChange={e=>setForm({...form, password: e.target.value})} />
+          <input placeholder="Teléfono" className="input-dark" value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} />
+          
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '6px', display: 'block' }}>Sucursal Asignada</label>
+            <select className="input-dark" value={form.branchId} onChange={e=>setForm({...form, branchId: e.target.value})} style={{ width: '100%' }}>
+              <option value="">-- Corporativo / Todas --</option>
+              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '6px', display: 'block' }}>Rol de Usuario</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              {Object.keys(ROLE_INFO).map(r => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setForm({...form, role: r})}
+                  style={{
+                    padding: '8px', borderRadius: '8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                    background: form.role === r ? ROLE_INFO[r].color : 'var(--c-surface-2)',
+                    color: form.role === r ? '#000' : 'var(--c-text-muted)',
+                    border: 'none', transition: 'var(--t-mid)',
+                  }}
+                >
+                  {ROLE_INFO[r].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Role Info Box */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '16px', marginTop: '4px', border: '1px solid var(--c-border)' }}>
+            <h4 style={{ fontSize: '12px', fontWeight: 700, color: selectedRole.color, marginBottom: '8px' }}>Permisos: {selectedRole.label}</h4>
+            <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginBottom: '8px' }}>
+              {selectedRole.can.map(c => <div key={c}>✅ {c}</div>)}
+            </div>
+            {selectedRole.cannot.length > 0 && (
+              <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', opacity: 0.6 }}>
+                {selectedRole.cannot.map(c => <div key={c}>🚫 {c}</div>)}
+              </div>
+            )}
+          </div>
+
+          <button type="submit" disabled={submitting} className="btn-green" style={{ padding: '14px', marginTop: '10px' }}>
+            {submitting ? 'Creando...' : 'Crear Usuario'}
+          </button>
+        </form>
+      </div>
+
+      <div style={{ background: 'var(--c-surface-1)', borderRadius: '16px', border: '1px solid var(--c-border)', overflow: 'hidden' }}>
+        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+          <thead style={{ background: 'var(--c-surface-2)' }}>
+            <tr>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Usuario</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Rol</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Sucursal</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(u => (
+              <tr key={u.id} style={{ borderBottom: '1px solid var(--c-border)' }}>
+                <td style={{ padding: '16px' }}>
+                  <div style={{ fontWeight: 600 }}>{u.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--c-text-muted)' }}>{u.email}</div>
+                </td>
+                <td style={{ padding: '16px' }}>
+                  <span style={{
+                    fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px',
+                    background: `${ROLE_INFO[u.role]?.color || '#555'}20`, color: ROLE_INFO[u.role]?.color || '#aaa'
+                  }}>
+                    {ROLE_INFO[u.role]?.label || u.role}
+                  </span>
+                </td>
+                <td style={{ padding: '16px', fontSize: '13px' }}>{u.branch?.name || '—'}</td>
+                <td style={{ padding: '16px' }}>
+                  <span style={{ fontSize: '11px', color: u.isActive ? '#22c55e' : '#ef4444' }}>
+                    {u.isActive ? '● Activo' : '● Inactivo'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

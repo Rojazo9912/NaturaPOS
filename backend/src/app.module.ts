@@ -15,6 +15,7 @@ import { CashRegisterModule } from './cash-register/cash-register.module';
 import { SecurityModule } from './security/security.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TransfersModule } from './transfers/transfers.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TransfersModule } from './transfers/transfers.module';
     SecurityModule,
     SubscriptionsModule,
     TransfersModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

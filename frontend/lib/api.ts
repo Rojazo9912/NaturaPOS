@@ -441,3 +441,42 @@ export async function apiUpdateTransferStatus(token: string, id: string, status:
 
 
 
+// ── Users ──────────────────────
+export async function apiGetUsers(token: string) {
+  const res = await fetch(`${API}/api/v1/users`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando usuarios')
+  return res.json()
+}
+
+export async function apiGetBranches(token: string) {
+  const res = await fetch(`${API}/api/v1/users/branches`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando sucursales')
+  return res.json()
+}
+
+export async function apiCreateUser(token: string, data: any) {
+  const res = await fetch(`${API}/api/v1/users`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.message || 'Error creando usuario')
+  }
+  return res.json()
+}
+
+export async function apiUpdateUser(token: string, id: string, data: any) {
+  const res = await fetch(`${API}/api/v1/users/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error actualizando usuario')
+  return res.json()
+}
