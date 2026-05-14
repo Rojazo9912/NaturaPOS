@@ -364,3 +364,22 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY)
 }
 
+// ── Subscriptions ──────────────────────
+export async function apiGetSubscriptionPlans(token: string) {
+  const res = await fetch(`${API}/api/v1/subscriptions/plans`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando planes de suscripción')
+  return res.json()
+}
+
+export async function apiCreateSubscriptionPlan(token: string, data: any) {
+  const res = await fetch(`${API}/api/v1/subscriptions/plans`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error creando plan de suscripción')
+  return res.json()
+}
+

@@ -15,6 +15,8 @@ import {
   apiGetAuditLogs,
   apiGetRiskAlerts,
   apiResolveRiskAlert,
+  apiGetSubscriptionPlans,
+  apiCreateSubscriptionPlan,
   type Product,
   type Category,
   type Ingredient
@@ -22,7 +24,7 @@ import {
 
 export default function AdminPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY'>('PRODUCTS')
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'INGREDIENTS' | 'RECIPES' | 'SECURITY' | 'SUBSCRIPTIONS'>('PRODUCTS')
   
   // Data
   const [products, setProducts] = useState<Product[]>([])
@@ -66,10 +68,11 @@ export default function AdminPage() {
 
       <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: '1px solid var(--c-border)', paddingBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: '1px solid var(--c-border)', paddingBottom: '16px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
           <button onClick={() => setActiveTab('PRODUCTS')} className={activeTab === 'PRODUCTS' ? 'btn-green' : 'btn-ghost'}>📦 Productos</button>
           <button onClick={() => setActiveTab('INGREDIENTS')} className={activeTab === 'INGREDIENTS' ? 'btn-green' : 'btn-ghost'}>🌾 Insumos Base</button>
           <button onClick={() => setActiveTab('RECIPES')} className={activeTab === 'RECIPES' ? 'btn-green' : 'btn-ghost'}>🧪 Recetas</button>
+          <button onClick={() => setActiveTab('SUBSCRIPTIONS')} className={activeTab === 'SUBSCRIPTIONS' ? 'btn-green' : 'btn-ghost'}>⭐ Planes de Suscripción</button>
           <button onClick={() => setActiveTab('SECURITY')} className={activeTab === 'SECURITY' ? 'btn-green' : 'btn-ghost'} style={{ marginLeft: 'auto', border: '1px solid #ef444450' }}>🛡️ Auditoría Antifugas</button>
         </div>
 
@@ -80,6 +83,7 @@ export default function AdminPage() {
             {activeTab === 'PRODUCTS' && <AdminProducts products={products} categories={categories} onReload={loadData} />}
             {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} />}
             {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} />}
+            {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptions />}
             {activeTab === 'SECURITY' && <AdminSecurity />}
           </div>
         )}
@@ -425,6 +429,111 @@ function AdminSecurity() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── SUBSCRIPTIONS TAB ──────────────────────────────────────────────────────
+function AdminSubscriptions() {
+  const [plans, setPlans] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ name: '', description: '', price: '', intervalDays: '30', smoothiesQty: '', discountPct: '0' })
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadPlans = async () => {
+    const token = getToken()
+    if (!token) return
+    setLoading(true)
+    try {
+      const data = await apiGetSubscriptionPlans(token)
+      setPlans(data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadPlans() }, [])
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+    const token = getToken()
+    if (!token) return
+    setSubmitting(true)
+    try {
+      await apiCreateSubscriptionPlan(token, {
+        name: form.name,
+        description: form.description,
+        price: parseFloat(form.price),
+        intervalDays: parseInt(form.intervalDays),
+        smoothiesQty: form.smoothiesQty ? parseInt(form.smoothiesQty) : null,
+        discountPct: parseFloat(form.discountPct),
+      })
+      alert('Plan de suscripción creado con éxito')
+      setForm({ name: '', description: '', price: '', intervalDays: '30', smoothiesQty: '', discountPct: '0' })
+      loadPlans()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) return <div>Cargando planes...</div>
+
+  return (
+    <div className="admin-grid">
+      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+        <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Nuevo Plan de Suscripción</h3>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input required placeholder="Nombre (ej. Plan Recovery Elite)" className="input-dark" style={{ padding: '10px' }} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} />
+          <textarea placeholder="Descripción / Beneficios" className="input-dark" style={{ padding: '10px', minHeight: '60px' }} value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
+          <input required type="number" step="0.01" placeholder="Precio ($)" className="input-dark" style={{ padding: '10px' }} value={form.price} onChange={e=>setForm({...form, price: e.target.value})} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>Frecuencia (Días)</label>
+              <input required type="number" placeholder="Ej. 30" className="input-dark" style={{ padding: '10px', width: '100%' }} value={form.intervalDays} onChange={e=>setForm({...form, intervalDays: e.target.value})} />
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>Smoothies Incluidos</label>
+              <input type="number" placeholder="Opcional" className="input-dark" style={{ padding: '10px', width: '100%' }} value={form.smoothiesQty} onChange={e=>setForm({...form, smoothiesQty: e.target.value})} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>Descuento Fijo en POS (%)</label>
+            <input required type="number" step="0.1" placeholder="Ej. 10" className="input-dark" style={{ padding: '10px', width: '100%' }} value={form.discountPct} onChange={e=>setForm({...form, discountPct: e.target.value})} />
+          </div>
+          <button type="submit" disabled={submitting} className="btn-green" style={{ padding: '12px', marginTop: '8px' }}>
+            {submitting ? 'Creando...' : 'Crear Plan'}
+          </button>
+        </form>
+      </div>
+
+      <div>
+        <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>Planes Activos</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {plans.map(p => (
+            <div key={p.id} style={{ background: 'var(--c-surface-1)', border: '1px solid var(--c-border)', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h4 style={{ fontWeight: 700, fontSize: '16px', color: 'var(--c-green)' }}>{p.name}</h4>
+                <p style={{ fontSize: '13px', color: 'var(--c-text-secondary)', marginTop: '4px' }}>{p.description}</p>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px', fontSize: '12px', color: 'var(--c-text-muted)' }}>
+                  <span>🔄 Cada {p.intervalDays} días</span>
+                  {p.smoothiesQty > 0 && <span>🥤 {p.smoothiesQty} Smoothies</span>}
+                  {p.discountPct > 0 && <span>🏷️ {p.discountPct}% OFF extra</span>}
+                </div>
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 800 }}>${p.price}</div>
+            </div>
+          ))}
+          {plans.length === 0 && (
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--c-text-muted)', border: '1px dashed var(--c-border)', borderRadius: '12px' }}>
+              No hay planes de suscripción configurados.
+            </div>
+          )}
         </div>
       </div>
     </div>

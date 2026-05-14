@@ -13,6 +13,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { CashRegisterModule } from './cash-register/cash-register.module';
 
 import { SecurityModule } from './security/security.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SecurityModule } from './security/security.module';
     InventoryModule,
     CashRegisterModule,
     SecurityModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
