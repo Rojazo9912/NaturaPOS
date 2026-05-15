@@ -39,6 +39,7 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   // Load Data
   const loadData = async () => {
@@ -62,6 +63,7 @@ export default function AdminPage() {
   }
 
   useEffect(() => { 
+    setMounted(true)
     loadData() 
     
     // Real-time alerts
@@ -93,7 +95,7 @@ export default function AdminPage() {
             fontSize: '13px', fontWeight: 800, color: 'var(--c-text)', textDecoration: 'none',
             transition: 'border-color 0.2s',
           }}>
-            {getUser()?.name?.charAt(0)?.toUpperCase() ?? '?'}
+            {mounted ? (getUser()?.name?.charAt(0)?.toUpperCase() ?? '?') : '?'}
           </a>
           <a href="/pos" className="btn-ghost" style={{ textDecoration: 'none' }}>💳 Volver al POS</a>
         </div>

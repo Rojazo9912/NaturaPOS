@@ -39,6 +39,7 @@ export default function POSPage() {
   const router = useRouter()
   const user   = getUser()
 
+  const [mounted, setMounted] = useState(false)
   const [time, setTime]             = useState('')
   const [category, setCategory]     = useState('all')
   const [search, setSearch]         = useState('')
@@ -109,6 +110,7 @@ export default function POSPage() {
 
   // Fetch catalog on mount
   useEffect(() => {
+    setMounted(true)
     const token = getToken()
     if (!token) { router.replace('/login'); return }
 
@@ -357,11 +359,11 @@ export default function POSPage() {
           </div>
 
           <div className="text-right hide-mobile">
-            <div className="text-sm font-bold text-zinc-200">{user?.name}</div>
-            <div className="text-[10px] text-zinc-500 uppercase font-black">{time}</div>
+            <div className="text-sm font-bold text-zinc-200">{mounted ? user?.name : '...'}</div>
+            <div className="text-[10px] text-zinc-500 uppercase font-black">{mounted ? time : '--:--'}</div>
           </div>
           <button onClick={() => { clearSession(); router.push('/login') }} className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-red-500 transition-colors">
-            🚪
+            {mounted ? '🚪' : ''}
           </button>
         </div>
       </header>
