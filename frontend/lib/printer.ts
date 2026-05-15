@@ -17,7 +17,7 @@ export async function printTicketWebUSB(orderData: any) {
     await device.claimInterface(iface.interfaceNumber)
 
     // Find the out endpoint
-    let outEndpoint: USBEndpoint | undefined
+    let outEndpoint: any | undefined
     for (const endpoint of iface.alternate.endpoints) {
       if (endpoint.direction === 'out') {
         outEndpoint = endpoint
