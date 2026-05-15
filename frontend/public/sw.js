@@ -1,7 +1,7 @@
-// Natural OS — Service Worker v1.0
+// Natural OS — Service Worker v1.1
 // Caching estrategy: Cache First para assets estáticos, Network First para API
 
-const CACHE_NAME = 'natural-os-v1'
+const CACHE_NAME = 'natural-os-v1.1'
 const STATIC_ASSETS = [
   '/',
   '/pos',
@@ -49,6 +49,22 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // HTML / Navegación → Network First (para obtener siempre la versión más reciente)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).then((response) => {
+        const clone = response.clone()
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+        return response
+      }).catch(() => {
+        return caches.match(request).then(cached => {
+           return cached || new Response('<h1>Offline</h1>', { headers: { 'Content-Type': 'text/html' } })
+        })
+      })
+    )
+    return
+  }
+
   // Static assets → Cache First
   event.respondWith(
     caches.match(request).then((cached) => {
@@ -59,11 +75,6 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
         }
         return response
-      }).catch(() => {
-        // Offline fallback para navegación
-        if (request.mode === 'navigate') {
-          return caches.match('/') || new Response('<h1>Offline</h1>', { headers: { 'Content-Type': 'text/html' } })
-        }
       })
     })
   )
