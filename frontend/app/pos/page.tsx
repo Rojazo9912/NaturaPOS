@@ -271,11 +271,11 @@ export default function POSPage() {
           <span className="text-xl font-bold text-green-500 tabular-nums">
             {time}
           </span>
-          <div className="flex gap-3 md:gap-4 hide-mobile">
-            <a href="/cash-register" className="text-xs text-zinc-400 no-underline hover:text-green-500">💰 Caja</a>
-            <a href="/ventas" className="text-xs text-zinc-400 no-underline hover:text-green-500">📋 Ventas</a>
-            <a href="/inventory" className="text-xs text-zinc-400 no-underline hover:text-green-500">📦 Stock</a>
-            <a href="/dashboard" className="text-xs text-zinc-400 no-underline hover:text-green-500">📊 Dashboard</a>
+          <div className="flex gap-4 md:gap-4">
+            <a href="/cash-register" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Corte de Caja">💰<span className="hide-mobile ml-1">Caja</span></a>
+            <a href="/ventas" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Ventas">📋<span className="hide-mobile ml-1">Ventas</span></a>
+            <a href="/inventory" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Stock">📦<span className="hide-mobile ml-1">Stock</span></a>
+            <a href="/dashboard" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Dashboard">📊<span className="hide-mobile ml-1">Dashboard</span></a>
           </div>
           <button onClick={() => { clearSession(); router.push('/login') }}
             className="text-xs text-zinc-500 bg-transparent border-none cursor-pointer hover:text-red-400">

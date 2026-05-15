@@ -178,6 +178,10 @@ html, body {
   gap: 32px;
 }
 
+.show-mobile {
+  display: none;
+}
+
 /* Grid utilities */
 .grid-responsive {
   display: grid;
@@ -230,7 +234,7 @@ html, body {
 
   .pos-cart {
     width: 100%;
-    height: auto;
+    height: 56px; /* Solo cabecera */
     border-left: none;
     border-top: 1px solid var(--c-border);
     position: sticky;
@@ -238,11 +242,17 @@ html, body {
     max-height: 80vh;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
     z-index: 50;
+    transition: height var(--t-mid);
+  }
+  
+  .pos-cart.active {
+    height: 85vh;
   }
   
   .pos-cart-header {
     cursor: pointer;
-    padding: 12px !important;
+    padding: 16px !important;
+    height: 56px;
   }
 
   .grid-responsive {
