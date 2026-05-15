@@ -1,7 +1,7 @@
-// Natural OS — Service Worker v1.1
-// Caching estrategy: Cache First para assets estáticos, Network First para API
+// Natural OS — Service Worker v1.2 (PRO)
+// Caching strategy: Cache First for static, Stale-While-Revalidate for JS/CSS, Network First for navigation
 
-const CACHE_NAME = 'natural-os-v1.1'
+const CACHE_NAME = 'natural-os-enterprise-v1.2'
 const STATIC_ASSETS = [
   '/',
   '/pos',
@@ -12,19 +12,18 @@ const STATIC_ASSETS = [
   '/icon-512.png',
 ]
 
-// ── Install: pre-cache static assets ──────────────────
+// ── Install: pre-cache critical paths ──────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[SW] Pre-cache error:', err)
-      })
+      console.log('[SW] Pre-caching app shell');
+      return cache.addAll(STATIC_ASSETS);
     })
   )
   self.skipWaiting()
 })
 
-// ── Activate: limpiar caches viejos ───────────────────
+// ── Activate: cleanup old caches ───────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -38,49 +37,69 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// ── Fetch: estrategia de caché ────────────────────────
+// ── Fetch: Intelligence Strategy ────────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
-  // API calls → Network First (sin cache)
-  if (url.pathname.startsWith('/api/') || url.hostname !== self.location.hostname) {
-    event.respondWith(fetch(request).catch(() => new Response('{"error":"offline"}', { headers: { 'Content-Type': 'application/json' } })))
+  // 1. API calls & Socket.io → Skip cache
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('socket.io')) {
+    event.respondWith(fetch(request).catch(() => {
+      return new Response(JSON.stringify({ error: 'offline', offline: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }))
     return
   }
 
-  // HTML / Navegación → Network First (para obtener siempre la versión más reciente)
+  // 2. Navigation (HTML Pages) → Network First, fallback to Cache
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).then((response) => {
         const clone = response.clone()
         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
         return response
-      }).catch(() => {
-        return caches.match(request).then(cached => {
-           return cached || new Response('<h1>Offline</h1>', { headers: { 'Content-Type': 'text/html' } })
-        })
+      }).catch(async () => {
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) return cachedResponse;
+        
+        const posFallback = await caches.match('/pos');
+        if (posFallback) return posFallback;
+
+        return new Response(`
+          <html>
+            <body style="background:#000; color:#22c55e; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; text-align:center;">
+              <div>
+                <h1 style="font-size:64px; margin:0;">🌿</h1>
+                <h2>Natura POS</h2>
+                <p style="color:#666">No hay conexión y esta página no está en caché.</p>
+                <button onclick="location.reload()" style="background:#22c55e; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">Reintentar</button>
+              </div>
+            </body>
+          </html>
+        `, { headers: { 'Content-Type': 'text/html' } });
       })
     )
     return
   }
 
-  // Static assets → Cache First
+  // 3. Static Assets (Next.js chunks, images, fonts) → Cache First, then update
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) return cached
-      return fetch(request).then((response) => {
-        if (response.ok) {
-          const clone = response.clone()
+      const fetchPromise = fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone()
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
         }
-        return response
-      })
+        return networkResponse
+      }).catch(() => null)
+
+      return cached || fetchPromise
     })
   )
 })
 
-// ── Push notifications (para alertas de riesgo) ───────
+// ── Notifications ─────────────────────────────────────
 self.addEventListener('push', (event) => {
   if (!event.data) return
   const data = event.data.json()
@@ -122,14 +141,11 @@ async function syncPendingOrders() {
     const db = await openOfflineDB()
     const tx = db.transaction('pending-orders', 'readonly')
     const store = tx.objectStore('pending-orders')
-    
     const requests = await new Promise((resolve) => {
       const req = store.getAll()
       req.onsuccess = () => resolve(req.result)
     })
-
     if (!requests || requests.length === 0) return
-
     for (const record of requests) {
       try {
         const url = record.apiUrl ? `${record.apiUrl}/api/v1/orders` : '/api/v1/orders'
@@ -141,17 +157,13 @@ async function syncPendingOrders() {
           },
           body: JSON.stringify(record.data)
         })
-        
         if (res.ok) {
-          // Eliminamos de IndexedDB tras sincronización exitosa
           const delTx = db.transaction('pending-orders', 'readwrite')
           delTx.objectStore('pending-orders').delete(record.id)
-        } else {
-          console.warn('[SW] Sync order non-ok response:', await res.text())
         }
       } catch (err) {
-        console.error('[SW] Sync order failed, will retry later', err)
-        throw err // Dispara reintento automático del Background Sync
+        console.error('[SW] Sync order failed', err)
+        throw err 
       }
     }
   } catch (err) {
