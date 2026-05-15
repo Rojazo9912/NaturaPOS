@@ -31,19 +31,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', overflow: 'hidden', background: 'var(--c-bg)' }}>
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden bg-[var(--c-bg)]">
 
       {/* ── Left Panel: Branding ── */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '48px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
+      <div className="hidden lg:flex flex-1 flex-col justify-center items-center p-12 relative overflow-hidden">
         {/* Animated orbs */}
         <div style={{
           position: 'absolute', width: '400px', height: '400px',
@@ -95,16 +86,26 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right Panel: Login Form ── */}
-      <div style={{
-        width: '440px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px', borderLeft: '1px solid var(--c-border)',
-        background: 'var(--c-surface-1)',
-      }}>
-        <div style={{ width: '100%', animation: 'fadeIn 0.4s ease' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px', color: 'var(--c-text)' }}>
+      <div className="w-full lg:w-[440px] flex items-center justify-center p-6 md:p-10 lg:border-l border-[var(--c-border)] bg-[var(--c-surface-1)]">
+        <div className="w-full max-w-[400px] animate-fadeIn">
+          
+          {/* Logo visible solo en móvil */}
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '14px', marginBottom: '16px',
+              background: 'linear-gradient(135deg, var(--c-green), var(--c-lime-dark))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '24px', boxShadow: '0 8px 32px rgba(34,197,94,0.3)',
+            }}>
+              🌿
+            </div>
+            <h1 className="text-2xl font-black text-white">Natural OS</h1>
+          </div>
+
+          <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px', color: 'var(--c-text)' }} className="text-center lg:text-left">
             Bienvenido de vuelta
           </h2>
-          <p style={{ fontSize: '14px', color: 'var(--c-text-muted)', marginBottom: '32px' }}>
+          <p style={{ fontSize: '14px', color: 'var(--c-text-muted)', marginBottom: '32px' }} className="text-center lg:text-left">
             Inicia sesión para acceder al sistema
           </p>
 
