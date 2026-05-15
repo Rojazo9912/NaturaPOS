@@ -237,7 +237,7 @@ export default function POSPage() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && showPayModal && !paying) {
         const canPay = paymentMethod !== 'CASH' || !cashGiven || Number(cashGiven) >= finalTotal
-        if (canPay && cart.length > 0) handlePay()
+        if (canPay && (cart || []).length > 0) handlePay()
       }
       if (e.key === 'Escape' && showPayModal) setShowPayModal(false)
     }
@@ -259,9 +259,9 @@ export default function POSPage() {
     }
   }, [cart, subtotal, discount, finalTotal, user]);
 
-  const catList = [ALL_CAT, ...categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
+  const catList = [ALL_CAT, ...(categories || []).map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
 
-  const filtered = products.filter(p =>
+  const filtered = (products || []).filter(p =>
     p.isActive &&
     (category === 'all' || p.categoryId === category) &&
     (p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -406,7 +406,7 @@ export default function POSPage() {
               className="input-dark w-full p-2.5 text-sm mb-3"
             />
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {catList.map(c => (
+              {(catList || []).map(c => (
                 <button 
                   key={c.id} 
                   onClick={() => setCategory(c.id)}
@@ -427,7 +427,7 @@ export default function POSPage() {
                 <div className="text-3xl mb-3 animate-pulse">⏳</div>
                 Cargando catálogo...
               </div>
-            ) : filtered.map(p => (
+            ) : (filtered || []).map(p => (
               <button 
                 key={p.id} 
                 onClick={() => addToCart(p)}
@@ -509,7 +509,7 @@ export default function POSPage() {
                 <div className="text-4xl mb-3 opacity-20">🛒</div>
                 <div className="text-sm">El carrito está vacío</div>
               </div>
-            ) : cart.map(item => (
+            ) : (cart || []).map(item => (
               <div key={item.id} className="flex gap-3 items-center group">
                 <div className="w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center text-xl shrink-0 group-hover:bg-zinc-800 transition-colors">
                   {item.category?.emoji ?? '📦'}
@@ -553,7 +553,7 @@ export default function POSPage() {
             </div>
 
             <div className="grid grid-cols-5 gap-2">
-              {PAYMENT_METHODS.map(m => (
+              {(PAYMENT_METHODS || []).map(m => (
                 <button
                   key={m.id}
                   onClick={() => setPaymentMethod(m.id)}
@@ -608,7 +608,7 @@ export default function POSPage() {
                 </p>
 
                 <div style={{ background: 'var(--c-surface-2)', borderRadius: 'var(--r-lg)', padding: '16px', marginBottom: '20px' }}>
-                  {cart.map(i => (
+                  {(cart || []).map(i => (
                     <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
                       <span style={{ color: 'var(--c-text-secondary)' }}>{i.category?.emoji ?? '📦'} {i.name} x{i.qty}</span>
                       <span style={{ fontWeight: 600 }}>{fmt(i.price * i.qty)}</span>
