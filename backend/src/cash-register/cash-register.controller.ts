@@ -27,4 +27,9 @@ export class CashRegisterController {
   getHistory(@CurrentUser() user: any) {
     return this.cashRegisterService.getHistory(user.branchId);
   }
+
+  @Get(':id/breakdown')
+  getBreakdown(@Param('id') id: string) {
+    return this.cashRegisterService.getBreakdown(id);
+  }
 }

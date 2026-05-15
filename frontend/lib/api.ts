@@ -265,6 +265,14 @@ export async function apiGetRegisterHistory(token: string): Promise<CashRegister
   return res.json()
 }
 
+export async function apiGetRegisterBreakdown(token: string, id: string): Promise<Array<{ name: string, qty: number, subtotal: number }>> {
+  const res = await fetch(`${API}/api/v1/cash-register/${id}/breakdown`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando desglose')
+  return res.json()
+}
+
 // ── Inventory ────────────────────────────────────────
 export interface InventoryItem {
   id: string

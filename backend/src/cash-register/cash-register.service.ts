@@ -121,4 +121,36 @@ export class CashRegisterService {
       take: 20,
     });
   }
+
+  async getBreakdown(id: string) {
+    const register = await this.prisma.cashRegister.findUnique({ where: { id } });
+    if (!register) throw new NotFoundException('Caja no encontrada');
+    
+    const orders = await this.prisma.order.findMany({
+      where: {
+        branchId: register.branchId,
+        cashierId: register.userId,
+        status: 'COMPLETED',
+        createdAt: {
+          gte: register.openedAt,
+          lte: register.closedAt || new Date(),
+        }
+      },
+      include: { items: { include: { product: true } } }
+    });
+
+    const breakdown: Record<string, { name: string, qty: number, subtotal: number }> = {};
+    
+    for (const o of orders) {
+      for (const item of o.items) {
+        if (!breakdown[item.productId]) {
+          breakdown[item.productId] = { name: item.product.name, qty: 0, subtotal: 0 };
+        }
+        breakdown[item.productId].qty += item.quantity;
+        breakdown[item.productId].subtotal += item.subtotal;
+      }
+    }
+    
+    return Object.values(breakdown).sort((a,b) => b.subtotal - a.subtotal);
+  }
 }

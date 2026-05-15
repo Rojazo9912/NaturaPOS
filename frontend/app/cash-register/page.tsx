@@ -9,6 +9,7 @@ import {
   apiCloseRegister,
   apiGetRegisterHistory,
   apiGetOrders,
+  apiGetRegisterBreakdown,
   type CashRegister,
 } from '@/lib/api'
 
@@ -20,6 +21,8 @@ export default function CashRegisterPage() {
   const [history, setHistory]     = useState<CashRegister[]>([])
   const [loading, setLoading]     = useState(true)
   const [viewedCut, setViewedCut] = useState<{h: CashRegister, cut: any} | null>(null)
+  const [viewedBreakdown, setViewedBreakdown] = useState<{h: CashRegister, items: any[]} | null>(null)
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false)
 
   // Forms
   const [openingAmount, setOpeningAmount] = useState('')
@@ -81,6 +84,20 @@ export default function CashRegisterPage() {
       setError(e.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleViewBreakdown = async (h: CashRegister) => {
+    const token = getToken()
+    if (!token) return
+    setLoadingBreakdown(true)
+    try {
+      const items = await apiGetRegisterBreakdown(token, h.id)
+      setViewedBreakdown({ h, items })
+    } catch (e: any) {
+      alert('Error cargando desglose: ' + e.message)
+    } finally {
+      setLoadingBreakdown(false)
     }
   }
 
@@ -247,6 +264,9 @@ export default function CashRegisterPage() {
                          <button onClick={() => setViewedCut({h, cut: h.cuts!.find(c=>c.type==='FISCAL')})} className="text-[9px] font-bold bg-purple-500/10 text-purple-400 px-2 py-1 rounded-md whitespace-nowrap border-none cursor-pointer hover:bg-purple-500/20 transition-colors">
                            📄 VER CORTE B
                          </button>
+                         <button onClick={() => handleViewBreakdown(h)} disabled={loadingBreakdown} className="text-[9px] font-bold bg-green-500/10 text-green-400 px-2 py-1 rounded-md whitespace-nowrap border-none cursor-pointer hover:bg-green-500/20 transition-colors">
+                           📦 DESGLOSE DE PRODUCTOS
+                         </button>
                        </div>
                     )}
                   </div>
@@ -391,6 +411,109 @@ export default function CashRegisterPage() {
             <p>___________________________________</p>
             <p>Firma de Conformidad</p>
           </div>
+        </div>
+      )}
+
+      {/* Modal para Desglose de Productos */}
+      {viewedBreakdown && (
+        <div className="modal-overlay no-print" onClick={() => setViewedBreakdown(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: 0, overflow: 'hidden' }}>
+            <div style={{ background: '#059669', padding: '24px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#fff', margin: 0 }}>
+                DESGLOSE DE PRODUCTOS
+              </h2>
+              <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '4px' }}>
+                Apertura: {new Date(viewedBreakdown.h.openedAt).toLocaleString('es-MX')} <br/>
+                Cierre: {viewedBreakdown.h.closedAt ? new Date(viewedBreakdown.h.closedAt).toLocaleString('es-MX') : 'Abierta'}
+              </div>
+            </div>
+
+            <div style={{ padding: '24px', background: 'var(--c-surface-1)', maxHeight: '400px', overflowY: 'auto' }}>
+              {viewedBreakdown.items.length === 0 ? (
+                <div className="text-center text-zinc-500 py-10">No hubo ventas registradas en este turno.</div>
+              ) : (
+                <table className="w-full text-left text-sm text-zinc-300">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-zinc-500">
+                      <th className="pb-2 font-medium">Producto</th>
+                      <th className="pb-2 font-medium text-center">Cant.</th>
+                      <th className="pb-2 font-medium text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewedBreakdown.items.map((item, idx) => (
+                      <tr key={idx} className="border-b border-zinc-900/50">
+                        <td className="py-3 font-medium text-white">{item.name}</td>
+                        <td className="py-3 text-center">{item.qty}</td>
+                        <td className="py-3 text-right font-bold text-green-400">{fmt(item.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div style={{ padding: '16px 20px', background: 'var(--c-surface-2)', borderTop: '1px solid var(--c-border)', display: 'flex', gap: '12px' }}>
+              <button onClick={() => {
+                // Se asegura de ocultar primero el modal anterior para que no interfiera en la impresión
+                setViewedCut(null);
+                setTimeout(() => window.print(), 100);
+              }} className="btn-green" style={{ flex: 1, padding: '12px', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <span className="text-lg">📄</span> Imprimir Desglose
+              </button>
+              <button onClick={() => setViewedBreakdown(null)} className="btn-ghost" style={{ padding: '12px 24px', fontSize: '14px' }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket imprimible oculto para Desglose */}
+      {viewedBreakdown && (
+        <div id="printable-ticket" style={{ display: 'none' }}>
+          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <h2 style={{ margin: '0', fontSize: '18px' }}>NATURAL BY NUTRIT</h2>
+            <p style={{ margin: '0', fontSize: '12px', fontWeight: 'bold' }}>
+              REPORTE DE VENTAS POR PRODUCTO
+            </p>
+            <p style={{ margin: '0', fontSize: '10px' }}>ID Caja: {viewedBreakdown.h.id.split('-')[0]}</p>
+          </div>
+          
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+          
+          <div style={{ marginBottom: '10px', fontSize: '11px' }}>
+            <p style={{ margin: '0' }}><strong>Apertura:</strong> {new Date(viewedBreakdown.h.openedAt).toLocaleString('es-MX')}</p>
+            <p style={{ margin: '0' }}><strong>Cierre:</strong> {viewedBreakdown.h.closedAt ? new Date(viewedBreakdown.h.closedAt).toLocaleString('es-MX') : 'Abierta'}</p>
+          </div>
+
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+
+          <table style={{ width: '100%', fontSize: '11px', marginBottom: '10px', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #000' }}>
+                <th style={{ textAlign: 'left', paddingBottom: '4px' }}>Producto</th>
+                <th style={{ textAlign: 'center', paddingBottom: '4px' }}>Cant.</th>
+                <th style={{ textAlign: 'right', paddingBottom: '4px' }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {viewedBreakdown.items.map((item, idx) => (
+                <tr key={idx}>
+                  <td style={{ paddingTop: '4px', paddingBottom: '4px' }}>{item.name}</td>
+                  <td style={{ textAlign: 'center', paddingTop: '4px', paddingBottom: '4px' }}>{item.qty}</td>
+                  <td style={{ textAlign: 'right', paddingTop: '4px', paddingBottom: '4px' }}>{fmt(item.subtotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          <div style={{ borderTop: '1px solid #000', margin: '10px 0' }}></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold' }}>
+             <span>TOTAL DE PRODUCTOS:</span>
+             <span>{viewedBreakdown.items.reduce((s, i) => s + i.qty, 0)} items</span>
+          </div>
+
         </div>
       )}
 
