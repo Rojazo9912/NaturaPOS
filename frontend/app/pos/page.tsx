@@ -259,9 +259,9 @@ export default function POSPage() {
     }
   }, [cart, subtotal, discount, finalTotal, user]);
 
-  const catList = [ALL_CAT, ...(categories || []).map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
+  const catList = [ALL_CAT, ...(Array.isArray(categories) ? categories : []).map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
 
-  const filtered = (products || []).filter(p =>
+  const filtered = (Array.isArray(products) ? products : []).filter(p =>
     p.isActive &&
     (category === 'all' || p.categoryId === category) &&
     (p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -406,7 +406,7 @@ export default function POSPage() {
               className="input-dark w-full p-2.5 text-sm mb-3"
             />
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {(catList || []).map(c => (
+              {Array.isArray(catList) && catList.map(c => (
                 <button 
                   key={c.id} 
                   onClick={() => setCategory(c.id)}
@@ -427,7 +427,7 @@ export default function POSPage() {
                 <div className="text-3xl mb-3 animate-pulse">⏳</div>
                 Cargando catálogo...
               </div>
-            ) : (filtered || []).map(p => (
+            ) : (Array.isArray(filtered) ? filtered : []).map(p => (
               <button 
                 key={p.id} 
                 onClick={() => addToCart(p)}

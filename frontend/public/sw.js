@@ -94,7 +94,7 @@ self.addEventListener('fetch', (event) => {
         return networkResponse
       }).catch(() => null)
 
-      return cached || fetchPromise
+      return cached || fetchPromise || new Response(null, { status: 404 })
     })
   )
 })
