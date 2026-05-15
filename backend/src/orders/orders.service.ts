@@ -107,6 +107,8 @@ export class OrdersService {
       }
 
       // Costeo Inteligente: Descontar Inventario
+      const inventoryWarnings: string[] = [];
+
       for (const item of data.items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
@@ -120,14 +122,18 @@ export class OrdersService {
             
             // Upsert inventory to deduct
             const currentInv = await tx.branchInventory.findUnique({
-              where: { branchId_ingredientId: { branchId: user.branchId, ingredientId: rItem.ingredientId } }
+              where: { branchId_ingredientId: { branchId: user.branchId, ingredientId: rItem.ingredientId } },
+              include: { ingredient: true }
             });
             
             if (currentInv) {
-              await tx.branchInventory.update({
+              const updatedInv = await tx.branchInventory.update({
                 where: { id: currentInv.id },
                 data: { quantity: { decrement: qtyToDeduct } },
               });
+              if (updatedInv.quantity <= updatedInv.minStock) {
+                inventoryWarnings.push(`Stock crítico de insumo: ${currentInv.ingredient?.name} (Queda: ${updatedInv.quantity})`);
+              }
             } else {
               await tx.branchInventory.create({
                 data: { branchId: user.branchId, ingredientId: rItem.ingredientId, quantity: -qtyToDeduct },
@@ -149,14 +155,18 @@ export class OrdersService {
         } else {
           // Descontar producto directo (ej. agua embotellada, snacks)
           const currentInv = await tx.branchInventory.findUnique({
-            where: { branchId_productId: { branchId: user.branchId, productId: item.productId } }
+            where: { branchId_productId: { branchId: user.branchId, productId: item.productId } },
+            include: { product: true }
           });
           
           if (currentInv) {
-            await tx.branchInventory.update({
+            const updatedInv = await tx.branchInventory.update({
               where: { id: currentInv.id },
               data: { quantity: { decrement: item.quantity } },
             });
+            if (updatedInv.quantity <= updatedInv.minStock) {
+               inventoryWarnings.push(`Stock crítico de producto: ${currentInv.product?.name} (Queda: ${updatedInv.quantity})`);
+            }
           } else {
             await tx.branchInventory.create({
               data: { branchId: user.branchId, productId: item.productId, quantity: -item.quantity },
@@ -180,7 +190,7 @@ export class OrdersService {
       // Emit real-time notification
       this.eventsGateway.emitOrder(user.organizationId, order);
 
-      return order;
+      return { ...order, inventoryWarnings };
     });
   }
 }

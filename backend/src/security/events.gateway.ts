@@ -39,4 +39,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(`org_${orgId}`);
     return { event: 'joined', data: orgId };
   }
+
+  @SubscribeMessage('cart_update')
+  handleCartUpdate(client: Socket, payload: { orgId: string, cart: any[], total: number }) {
+    client.to(`org_${payload.orgId}`).emit('cart_update', payload);
+  }
 }

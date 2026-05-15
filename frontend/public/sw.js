@@ -101,3 +101,61 @@ self.addEventListener('notificationclick', (event) => {
     clients.openWindow(event.notification.data?.url || '/dashboard')
   )
 })
+
+// ── Background Sync (Offline Orders) ───────────────────
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-orders') {
+    event.waitUntil(syncPendingOrders())
+  }
+})
+
+function openOfflineDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('naturalos-offline', 1)
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+  })
+}
+
+async function syncPendingOrders() {
+  try {
+    const db = await openOfflineDB()
+    const tx = db.transaction('pending-orders', 'readonly')
+    const store = tx.objectStore('pending-orders')
+    
+    const requests = await new Promise((resolve) => {
+      const req = store.getAll()
+      req.onsuccess = () => resolve(req.result)
+    })
+
+    if (!requests || requests.length === 0) return
+
+    for (const record of requests) {
+      try {
+        const url = record.apiUrl ? `${record.apiUrl}/api/v1/orders` : '/api/v1/orders'
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${record.token}`
+          },
+          body: JSON.stringify(record.data)
+        })
+        
+        if (res.ok) {
+          // Eliminamos de IndexedDB tras sincronización exitosa
+          const delTx = db.transaction('pending-orders', 'readwrite')
+          delTx.objectStore('pending-orders').delete(record.id)
+        } else {
+          console.warn('[SW] Sync order non-ok response:', await res.text())
+        }
+      } catch (err) {
+        console.error('[SW] Sync order failed, will retry later', err)
+        throw err // Dispara reintento automático del Background Sync
+      }
+    }
+  } catch (err) {
+    console.error('[SW] DB Error syncing orders:', err)
+  }
+}
+

@@ -139,6 +139,8 @@ export async function apiCreateCustomer(token: string, data: { name: string; pho
 }
 
 // ── Orders ─────────────────────────────────────────────
+import { savePendingOrder, registerBackgroundSync } from './offline'
+
 export async function apiCreateOrder(token: string, data: {
   customerId?: string
   subtotal: number
@@ -149,16 +151,33 @@ export async function apiCreateOrder(token: string, data: {
   pointsEarned?: number
   pointsRedeemed?: number
 }) {
-  const res = await fetch(`${API}/api/v1/orders`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error((err as any).message || 'Error al procesar la orden')
+  try {
+    const res = await fetch(`${API}/api/v1/orders`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error((err as any).message || 'Error al procesar la orden')
+    }
+    return await res.json()
+  } catch (error: any) {
+    if (!navigator.onLine || error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+      console.warn('Network error detected. Saving order for background sync...', error)
+      await savePendingOrder(data, token, API)
+      await registerBackgroundSync()
+      
+      // Return a fake offline order so UI can continue
+      return {
+        ...data,
+        id: 'offline-' + Date.now(),
+        orderNumber: 'OFFLINE-' + Math.floor(Math.random() * 10000),
+        createdAt: new Date().toISOString()
+      }
+    }
+    throw error
   }
-  return res.json()
 }
 
 export async function apiGetOrders(token: string) {

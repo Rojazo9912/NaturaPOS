@@ -96,8 +96,10 @@ export class CashRegisterService {
 
       // ── Motor Antifugas (Security & Risk) ──
       // Si hay un faltante mayor a $50, crear alerta de riesgo
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      const branch = await tx.branch.findUnique({ where: { id: register.branchId } });
+      
       if (difference <= -50) {
-        const user = await tx.user.findUnique({ where: { id: userId } });
         await tx.riskAlert.create({
           data: {
             organizationId: user!.organizationId,
@@ -109,8 +111,70 @@ export class CashRegisterService {
         });
       }
 
+      // Enviar correo de cierre
+      this.sendClosureEmail({
+        adminEmail: process.env.ADMIN_EMAIL || 'admin@naturalos.com',
+        cashierName: user?.name,
+        branchName: branch?.name,
+        totalSales,
+        difference,
+        cutData
+      }).catch(err => console.error('Error enviando email de cierre:', err));
+
       return { register: updated, summary: { totalSales, totalCash, difference, ordersCount: orders.length } };
     });
+  }
+
+  private async sendClosureEmail(data: any) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.warn('RESEND_API_KEY no configurada. Saltando envío de email.');
+      return;
+    }
+
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <h1 style="color: #166534; text-align: center;">Cierre de Caja - ${data.branchName || 'Sucursal'}</h1>
+        <p><strong>Cajero:</strong> ${data.cashierName}</p>
+        <p><strong>Ventas Totales (Bruto):</strong> $${data.totalSales.toFixed(2)}</p>
+        <p><strong>Diferencia Físico vs Sistema:</strong> <span style="color: ${data.difference < 0 ? '#ef4444' : '#22c55e'}; font-weight: bold;">$${data.difference.toFixed(2)}</span></p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <h2 style="font-size: 18px; color: #374151;">Detalle del Corte:</h2>
+        <ul>
+          <li>Efectivo: $${data.cutData.totalCash.toFixed(2)}</li>
+          <li>Tarjeta: $${data.cutData.totalCard.toFixed(2)}</li>
+          <li>Transferencia: $${data.cutData.totalTransfer.toFixed(2)}</li>
+          <li>Wallet/Puntos: $${data.cutData.totalWallet.toFixed(2)}</li>
+          <li>Descuentos: $${data.cutData.totalDiscounts.toFixed(2)}</li>
+        </ul>
+        <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #6b7280;">
+          <p>Enviado automáticamente por Natural OS 🌿</p>
+        </div>
+      </div>
+    `;
+
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'Natural OS <onboarding@resend.dev>', // Resend test domain
+          to: data.adminEmail,
+          subject: `Corte de Caja - ${data.branchName || 'Sucursal'} - ${new Date().toLocaleDateString()}`,
+          html: html
+        })
+      });
+      if (!res.ok) {
+        console.error('Failed to send Resend email:', await res.text());
+      } else {
+        console.log('Email de cierre enviado a', data.adminEmail);
+      }
+    } catch (e) {
+      console.error('Error fetching Resend API:', e);
+    }
   }
 
   async getHistory(branchId: string) {

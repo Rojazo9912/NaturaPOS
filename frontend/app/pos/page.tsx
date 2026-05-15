@@ -11,7 +11,8 @@ import {
   apiCreateCheckoutSession, apiGetActiveRegister,
   type Product, type Category, type Customer,
 } from '@/lib/api'
-
+import { printTicketWebUSB } from '@/lib/printer'
+import { getSocket } from '@/lib/socket'
 // ── Types ───────────────────────────────────────────
 interface CartItem extends Product { qty: number }
 
@@ -52,6 +53,14 @@ export default function POSPage() {
   const [pointsToRedeem, setPointsToRedeem] = useState('')
   const [paying, setPaying]         = useState(false)
   const [payError, setPayError]     = useState('')
+  const [toasts, setToasts]         = useState<string[]>([])
+
+  const addToast = (msg: string) => {
+    setToasts(prev => [...prev, msg])
+    setTimeout(() => {
+      setToasts(prev => prev.slice(1))
+    }, 5000)
+  }
 
   // Subscription state
   const [plans, setPlans]           = useState<any[]>([])
@@ -149,6 +158,20 @@ export default function POSPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [showPayModal, paying, paymentMethod, cashGiven, finalTotal, cart, handlePay])
 
+  // Emit cart updates for Customer Facing Display
+  useEffect(() => {
+    if (user?.organizationId) {
+      const socket = getSocket(user.organizationId);
+      socket.emit('cart_update', {
+        orgId: user.organizationId,
+        cart,
+        subtotal,
+        discount,
+        total: finalTotal
+      });
+    }
+  }, [cart, subtotal, discount, finalTotal, user]);
+
   const catList = [ALL_CAT, ...categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? '📦' }))]
 
   const filtered = products.filter(p =>
@@ -239,6 +262,10 @@ export default function POSPage() {
       setShowPayModal(false)
       setShowSuccess(true)
       
+      if (orderData.inventoryWarnings?.length) {
+        orderData.inventoryWarnings.forEach((msg: string) => addToast(msg))
+      }
+      
       // Reset POS
       setCart([])
       setCustomer(null)
@@ -254,7 +281,7 @@ export default function POSPage() {
 
   // ── Styles ────────────────────────────────────────
   return (
-    <div className="flex flex-col h-screen bg-black overflow-hidden">
+    <div className="flex flex-col h-dvh bg-black overflow-hidden">
       <InstallPrompt />
 
       {/* ── Header ── */}
@@ -691,8 +718,14 @@ export default function POSPage() {
 
             {/* Actions */}
             <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--c-surface-1)', borderTop: '1px solid var(--c-border)' }}>
-              <button onClick={() => window.print()} className="btn-green" style={{ padding: '14px', fontSize: '15px' }}>
-                🖨️ Imprimir Ticket
+              <button onClick={async () => {
+                const ok = await printTicketWebUSB(lastOrder);
+                if (!ok) window.print(); // Fallback
+              }} className="btn-green" style={{ padding: '14px', fontSize: '15px' }}>
+                ⚡ Imprimir Directo (USB)
+              </button>
+              <button onClick={() => window.print()} className="btn-ghost" style={{ padding: '10px', fontSize: '13px' }}>
+                🖨️ Imprimir PDF (Navegador)
               </button>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={() => setShowSuccess(false)} className="btn-ghost" style={{ flex: 1, padding: '12px' }}>
@@ -764,6 +797,21 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {/* TOASTS CONTAINER */}
+      <div style={{ position: 'fixed', bottom: '20px', right: '20px', display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 9999 }}>
+        {toasts.map((msg, i) => (
+          <div key={i} style={{
+            background: 'var(--c-surface-1)', border: '1px solid #eab308', borderLeft: '4px solid #eab308',
+            color: 'var(--c-text)', padding: '12px 16px', borderRadius: '8px', fontSize: '13px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)', animation: 'fadeIn 0.3s ease', display: 'flex', gap: '10px', alignItems: 'center'
+          }}>
+            <span style={{ fontSize: '18px' }}>⚠️</span>
+            <span>{msg}</span>
+          </div>
+        ))}
+      </div>
+
     </div>
   )
 }
