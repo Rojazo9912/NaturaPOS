@@ -77,7 +77,18 @@ export class UsersService {
   async getBranches(organizationId: string) {
     return this.prisma.branch.findMany({
       where: { organizationId, isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, address: true, phone: true },
+    });
+  }
+
+  async createBranch(organizationId: string, data: { name: string; address?: string; phone?: string }) {
+    return this.prisma.branch.create({
+      data: {
+        organizationId,
+        name: data.name,
+        address: data.address,
+        phone: data.phone,
+      },
     });
   }
 }

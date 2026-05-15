@@ -23,6 +23,7 @@ import {
   apiUpdateUser,
   apiAdjustInventory,
   apiCreateCategory,
+  apiCreateBranch,
   type Product,
   type Category,
   type Ingredient
@@ -800,6 +801,66 @@ const ROLE_INFO: Record<string, { label: string, color: string, can: string[], c
   },
 }
 
+// ── BRANCHES SECTION ────────────────────────────────────────────────────────
+function AdminBranches({ branches, onReload }: { branches: any[], onReload: () => void }) {
+  const [form, setForm] = useState({ name: '', address: '', phone: '' })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+    const token = getToken()
+    if (!token) return
+    setSubmitting(true)
+    try {
+      await apiCreateBranch(token, form)
+      setForm({ name: '', address: '', phone: '' })
+      alert('Sucursal creada exitosamente')
+      onReload()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)', marginBottom: '32px' }}>
+      <h3 style={{ fontWeight: 600, marginBottom: '20px' }}>🏢 Nueva Sucursal</h3>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input required placeholder="Nombre (ej. Sucursal Norte)" className="input-dark" style={{ flex: 1, minWidth: '150px' }} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} />
+        <input placeholder="Dirección" className="input-dark" style={{ flex: 2, minWidth: '200px' }} value={form.address} onChange={e=>setForm({...form, address: e.target.value})} />
+        <input placeholder="Teléfono" className="input-dark" style={{ flex: 1, minWidth: '120px' }} value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} />
+        <button type="submit" disabled={submitting} className="btn-green" style={{ padding: '12px 24px', height: 'fit-content' }}>
+          {submitting ? 'Creando...' : '+ Crear Sucursal'}
+        </button>
+      </form>
+
+      {branches.length > 0 && (
+        <div style={{ marginTop: '24px', borderTop: '1px solid var(--c-border)', paddingTop: '20px' }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ color: 'var(--c-text-muted)' }}>
+                <th style={{ padding: '8px 0' }}>Nombre</th>
+                <th style={{ padding: '8px 0' }}>Dirección</th>
+                <th style={{ padding: '8px 0' }}>Teléfono</th>
+              </tr>
+            </thead>
+            <tbody>
+              {branches.map(b => (
+                <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <td style={{ padding: '10px 0', fontWeight: 600, color: 'var(--c-green)' }}>{b.name}</td>
+                  <td style={{ padding: '10px 0', color: 'var(--c-text-secondary)' }}>{b.address || '—'}</td>
+                  <td style={{ padding: '10px 0', color: 'var(--c-text-secondary)' }}>{b.phone || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AdminUsers() {
   const [users, setUsers] = useState<any[]>([])
   const [branches, setBranches] = useState<any[]>([])
@@ -845,7 +906,10 @@ function AdminUsers() {
   const selectedRole = ROLE_INFO[form.role]
 
   return (
-    <div className="admin-grid">
+    <div>
+      <AdminBranches branches={branches} onReload={loadUsers} />
+      
+      <div className="admin-grid">
       <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '20px' }}>Nuevo Usuario</h3>
 
@@ -951,6 +1015,7 @@ function AdminUsers() {
             </tbody>
           </table>
         )}
+      </div>
       </div>
     </div>
   )

@@ -145,6 +145,62 @@ export default function POSPage() {
   const pointsEarned = Math.floor(finalTotal * 0.10)
   const change      = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
 
+  const handlePay = useCallback(async () => {
+    if (paying || cart.length === 0) return
+    const token = getToken()
+    if (!token) return
+    
+    if (!activeRegister) {
+      setPayError('❌ Debes ABRIR LA CAJA antes de poder realizar ventas.')
+      setPaying(false)
+      return
+    }
+
+    setPaying(true)
+    setPayError('')
+    try {
+      const redeemed = Number(pointsToRedeem) || 0
+      const payments = []
+      if (redeemed > 0) payments.push({ method: 'POINTS', amount: redeemed })
+      if (finalTotal > 0) payments.push({ method: paymentMethod, amount: finalTotal })
+
+      const orderData = await apiCreateOrder(token, {
+        customerId: customer?.id,
+        subtotal,
+        discountAmount: discount,
+        total: finalTotal,
+        items: cart.map(i => ({
+          productId: i.id,
+          quantity: i.qty,
+          unitPrice: i.price,
+          subtotal: i.price * i.qty,
+        })),
+        payments,
+        pointsEarned: customer ? Math.floor(finalTotal * 0.1) : 0,
+        pointsRedeemed: redeemed,
+      })
+
+      setLastOrder(orderData)
+      setShowPayModal(false)
+      setShowSuccess(true)
+      
+      if (orderData.inventoryWarnings?.length) {
+        orderData.inventoryWarnings.forEach((msg: string) => addToast(msg))
+      }
+      
+      // Reset POS
+      setCart([])
+      setCustomer(null)
+      setPhoneQuery('')
+      setPointsToRedeem('')
+      setCashGiven('')
+    } catch (e: any) {
+      setPayError(e.message ?? 'Error al procesar el pago')
+    } finally {
+      setPaying(false)
+    }
+  }, [paying, cart, activeRegister, customer, subtotal, discount, finalTotal, pointsToRedeem, paymentMethod, cashGiven, addToast])
+
   // Keyboard shortcut: Enter = confirm payment when modal open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -240,60 +296,6 @@ export default function POSPage() {
     }
   }
 
-  async function handlePay() {
-    const token = getToken()
-    if (!token) return
-    
-    if (!activeRegister) {
-      setPayError('❌ Debes ABRIR LA CAJA antes de poder realizar ventas.')
-      setPaying(false)
-      return
-    }
-
-    setPaying(true)
-    setPayError('')
-    try {
-      const redeemed = Number(pointsToRedeem) || 0
-      const payments = []
-      if (redeemed > 0) payments.push({ method: 'POINTS', amount: redeemed })
-      if (finalTotal > 0) payments.push({ method: paymentMethod, amount: finalTotal })
-
-      const orderData = await apiCreateOrder(token, {
-        customerId: customer?.id,
-        subtotal,
-        discountAmount: discount,
-        total: finalTotal,
-        items: cart.map(i => ({
-          productId: i.id,
-          quantity: i.qty,
-          unitPrice: i.price,
-          subtotal: i.price * i.qty,
-        })),
-        payments,
-        pointsEarned: customer ? Math.floor(finalTotal * 0.1) : 0,
-        pointsRedeemed: redeemed,
-      })
-
-      setLastOrder(orderData)
-      setShowPayModal(false)
-      setShowSuccess(true)
-      
-      if (orderData.inventoryWarnings?.length) {
-        orderData.inventoryWarnings.forEach((msg: string) => addToast(msg))
-      }
-      
-      // Reset POS
-      setCart([])
-      setCustomer(null)
-      setPhoneQuery('')
-      setPointsToRedeem('')
-      setCashGiven('')
-    } catch (e: any) {
-      setPayError(e.message ?? 'Error al procesar el pago')
-    } finally {
-      setPaying(false)
-    }
-  }
 
   // ── Styles ────────────────────────────────────────
   return (
@@ -327,16 +329,22 @@ export default function POSPage() {
         </div>
       </header>
 
+      {/* CAJA CERRADA BLOCKER */}
       {!activeRegister && !catalogLoading && (user?.role === 'CASHIER' || user?.role === 'SUPERVISOR') && (
-        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
-          <div className="max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-3xl shadow-2xl animate-fadeIn">
-            <div className="text-6xl mb-6">🔒</div>
-            <h2 className="text-2xl font-black text-white mb-4">Caja Bloqueada</h2>
-            <p className="text-zinc-400 mb-8 leading-relaxed">
-              Por seguridad, no puedes realizar ventas sin haber abierto un turno de caja. 
-              Esto evita descuadres y asegura la integridad financiera de la sucursal.
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 100, 
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '24px', textAlign: 'center'
+        }} className="animate-fadeIn">
+          <div style={{ maxWidth: '400px', background: 'var(--c-surface-1)', padding: '40px', borderRadius: '24px', border: '1px solid var(--c-border)', boxShadow: 'var(--shadow-lg)', margin: 'auto' }}>
+            <div style={{ fontSize: '64px', marginBottom: '24px' }}>🔒</div>
+            <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '16px' }}>Caja Cerrada</h2>
+            <p style={{ color: 'var(--c-text-muted)', marginBottom: '32px', lineHeight: '1.6' }}>
+              Para poder realizar ventas y asegurar la integridad financiera, debes <strong>Abrir Caja</strong> primero.
+              Esto evita descuadres y asegura la integridad de la sucursal.
             </p>
-            <a href="/cash-register" className="btn-green inline-block px-8 py-4 no-underline text-lg">
+            <a href="/cash-register" className="btn-green" style={{ padding: '16px 32px', width: '100%', fontSize: '16px', display: 'inline-block', textDecoration: 'none', borderRadius: '12px' }}>
               🚀 Abrir Caja Ahora
             </a>
           </div>

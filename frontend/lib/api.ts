@@ -534,6 +534,16 @@ export async function apiGetBranches(token: string) {
   return res.json()
 }
 
+export async function apiCreateBranch(token: string, data: { name: string; address?: string; phone?: string }) {
+  const res = await fetch(`${API}/api/v1/users/branches`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error creando sucursal')
+  return res.json()
+}
+
 export async function apiCreateUser(token: string, data: any) {
   const res = await fetch(`${API}/api/v1/users`, {
     method: 'POST',

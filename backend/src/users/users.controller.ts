@@ -28,6 +28,12 @@ export class UsersController {
     return this.usersService.getBranches(user.organizationId);
   }
 
+  @Post('branches')
+  @Roles(Role.ADMIN, Role.OWNER)
+  createBranch(@CurrentUser() user: any, @Body() data: any) {
+    return this.usersService.createBranch(user.organizationId, data);
+  }
+
   @Patch(':id')
   @Roles(Role.ADMIN, Role.OWNER)
   update(@Param('id') id: string, @CurrentUser() user: any, @Body() updateUserDto: any) {
