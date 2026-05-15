@@ -327,7 +327,7 @@ export default function POSPage() {
         </div>
       </header>
 
-      {!activeRegister && !catalogLoading && (
+      {!activeRegister && !catalogLoading && (user?.role === 'CASHIER' || user?.role === 'SUPERVISOR') && (
         <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
           <div className="max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-3xl shadow-2xl animate-fadeIn">
             <div className="text-6xl mb-6">🔒</div>
