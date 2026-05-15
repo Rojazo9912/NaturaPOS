@@ -19,6 +19,7 @@ export default function CashRegisterPage() {
   const [activeReg, setActiveReg] = useState<CashRegister | null>(null)
   const [history, setHistory]     = useState<CashRegister[]>([])
   const [loading, setLoading]     = useState(true)
+  const [viewedCut, setViewedCut] = useState<{h: CashRegister, cut: any} | null>(null)
 
   // Forms
   const [openingAmount, setOpeningAmount] = useState('')
@@ -240,8 +241,12 @@ export default function CashRegisterPage() {
                     
                     {h.cuts && h.cuts.length > 0 && (
                        <div className="flex gap-2 pt-3 border-t border-zinc-800/50 overflow-x-auto no-scrollbar">
-                         <span className="text-[9px] font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded-md whitespace-nowrap">CORTE A: {fmt(h.cuts.find(c=>c.type==='ADMIN')?.totalSales || 0)}</span>
-                         <span className="text-[9px] font-bold bg-purple-500/10 text-purple-400 px-2 py-1 rounded-md whitespace-nowrap">CORTE B: GENERADO</span>
+                         <button onClick={() => setViewedCut({h, cut: h.cuts!.find(c=>c.type==='ADMIN')})} className="text-[9px] font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded-md whitespace-nowrap border-none cursor-pointer hover:bg-blue-500/20 transition-colors">
+                           📄 VER CORTE A: {fmt(h.cuts.find(c=>c.type==='ADMIN')?.totalSales || 0)}
+                         </button>
+                         <button onClick={() => setViewedCut({h, cut: h.cuts!.find(c=>c.type==='FISCAL')})} className="text-[9px] font-bold bg-purple-500/10 text-purple-400 px-2 py-1 rounded-md whitespace-nowrap border-none cursor-pointer hover:bg-purple-500/20 transition-colors">
+                           📄 VER CORTE B
+                         </button>
                        </div>
                     )}
                   </div>
@@ -252,6 +257,143 @@ export default function CashRegisterPage() {
 
         </div>
       </div>
+
+      {/* Modal para ver el detalle del Corte */}
+      {viewedCut && viewedCut.cut && (
+        <div className="modal-overlay no-print" onClick={() => setViewedCut(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', padding: 0, overflow: 'hidden' }}>
+            <div style={{ background: viewedCut.cut.type === 'ADMIN' ? '#1e3a8a' : '#581c87', padding: '24px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#fff', margin: 0 }}>
+                CORTE {viewedCut.cut.type === 'ADMIN' ? 'A (Interno)' : 'B (Fiscal)'}
+              </h2>
+              <div style={{ fontSize: '12px', color: '#cbd5e1', marginTop: '4px' }}>
+                Apertura: {new Date(viewedCut.h.openedAt).toLocaleString('es-MX')} <br/>
+                Cierre: {viewedCut.h.closedAt ? new Date(viewedCut.h.closedAt).toLocaleString('es-MX') : 'Abierta'}
+              </div>
+            </div>
+
+            <div style={{ padding: '24px', background: 'var(--c-surface-1)', maxHeight: '400px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>Ventas Totales</span>
+                <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalSales)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>En Efectivo</span>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalCash)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>En Tarjeta/Transf</span>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalCard)}</span>
+              </div>
+              
+              <div style={{ borderTop: '1px dashed var(--c-border)', margin: '16px 0' }}></div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>Fondo Inicial</span>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.h.openingAmount)}</span>
+              </div>
+              
+              {viewedCut.cut.type === 'ADMIN' && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>Físico Registrado</span>
+                    <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.h.closingAmount || 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', background: 'var(--c-surface-2)', padding: '10px', borderRadius: '8px' }}>
+                    <span style={{ color: 'var(--c-text-muted)', fontSize: '14px', fontWeight: 'bold' }}>Diferencia / Descuadre</span>
+                    <span style={{ fontWeight: 900, fontSize: '16px', color: (viewedCut.h.difference || 0) < 0 ? 'var(--c-error)' : 'var(--c-green)' }}>
+                      {fmt(viewedCut.h.difference || 0)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div style={{ padding: '16px 20px', background: 'var(--c-surface-2)', borderTop: '1px solid var(--c-border)', display: 'flex', gap: '12px' }}>
+              <button onClick={() => window.print()} className="btn-green" style={{ flex: 1, padding: '12px', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <span className="text-lg">📄</span> Imprimir PDF
+              </button>
+              <button onClick={() => setViewedCut(null)} className="btn-ghost" style={{ padding: '12px 24px', fontSize: '14px' }}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket imprimible oculto para Cortes */}
+      {viewedCut && viewedCut.cut && (
+        <div id="printable-ticket" style={{ display: 'none' }}>
+          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <h2 style={{ margin: '0', fontSize: '18px' }}>NATURAL BY NUTRIT</h2>
+            <p style={{ margin: '0', fontSize: '12px', fontWeight: 'bold' }}>
+              REPORTE DE CORTE {viewedCut.cut.type === 'ADMIN' ? 'A (INTERNO)' : 'B (FISCAL)'}
+            </p>
+            <p style={{ margin: '0', fontSize: '10px' }}>ID Caja: {viewedCut.h.id.split('-')[0]}</p>
+          </div>
+          
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+          
+          <div style={{ marginBottom: '10px', fontSize: '11px' }}>
+            <p style={{ margin: '0' }}><strong>Apertura:</strong> {new Date(viewedCut.h.openedAt).toLocaleString('es-MX')}</p>
+            <p style={{ margin: '0' }}><strong>Cierre:</strong> {viewedCut.h.closedAt ? new Date(viewedCut.h.closedAt).toLocaleString('es-MX') : 'Abierta'}</p>
+          </div>
+
+          <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+
+          <table style={{ width: '100%', fontSize: '12px', marginBottom: '10px' }}>
+            <tbody>
+              <tr>
+                <td style={{ paddingBottom: '4px' }}>Fondo Inicial:</td>
+                <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.h.openingAmount)}</td>
+              </tr>
+              <tr>
+                <td style={{ paddingBottom: '4px' }}>Ventas Totales:</td>
+                <td style={{ textAlign: 'right', paddingBottom: '4px', fontWeight: 'bold' }}>{fmt(viewedCut.cut.totalSales)}</td>
+              </tr>
+              <tr>
+                <td style={{ paddingBottom: '4px' }}>- Efectivo:</td>
+                <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.cut.totalCash)}</td>
+              </tr>
+              <tr>
+                <td style={{ paddingBottom: '4px' }}>- Otros (Tarjeta/QR):</td>
+                <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.cut.totalCard)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {viewedCut.cut.type === 'ADMIN' && (
+            <>
+              <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
+              <table style={{ width: '100%', fontSize: '12px' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ paddingBottom: '4px' }}>Efectivo Físico Reportado:</td>
+                    <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.h.closingAmount || 0)}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ paddingBottom: '4px', fontWeight: 'bold' }}>Diferencia / Descuadre:</td>
+                    <td style={{ textAlign: 'right', paddingBottom: '4px', fontWeight: 'bold' }}>{fmt(viewedCut.h.difference || 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              {viewedCut.h.notes && (
+                <div style={{ marginTop: '10px', fontSize: '10px' }}>
+                  <strong>Notas del Cajero:</strong><br/>
+                  {viewedCut.h.notes}
+                </div>
+              )}
+            </>
+          )}
+
+          <div style={{ marginTop: '30px', textAlign: 'center', fontSize: '10px' }}>
+            <p>___________________________________</p>
+            <p>Firma de Conformidad</p>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
