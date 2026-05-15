@@ -327,6 +327,22 @@ export default function POSPage() {
         </div>
       </header>
 
+      {!activeRegister && !catalogLoading && (
+        <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-center">
+          <div className="max-w-md bg-zinc-900 border border-zinc-800 p-8 rounded-3xl shadow-2xl animate-fadeIn">
+            <div className="text-6xl mb-6">🔒</div>
+            <h2 className="text-2xl font-black text-white mb-4">Caja Bloqueada</h2>
+            <p className="text-zinc-400 mb-8 leading-relaxed">
+              Por seguridad, no puedes realizar ventas sin haber abierto un turno de caja. 
+              Esto evita descuadres y asegura la integridad financiera de la sucursal.
+            </p>
+            <a href="/cash-register" className="btn-green inline-block px-8 py-4 no-underline text-lg">
+              🚀 Abrir Caja Ahora
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="pos-layout">
 
         {/* ── LEFT: Product Catalog ── */}
