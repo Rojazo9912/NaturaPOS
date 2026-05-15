@@ -72,7 +72,35 @@ export default function POSPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
   const [activeRegister, setActiveRegister] = useState<any>(null)
+  const [isOnline, setIsOnline] = useState(true)
+  const [pendingCount, setPendingCount] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
+
+  // Monitor connectivity
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine)
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    
+    // Check pending orders from localStorage
+    const checkPending = () => {
+      const raw = localStorage.getItem('pending_orders')
+      if (raw) {
+        try {
+          const list = JSON.parse(raw)
+          setPendingCount(list.length)
+        } catch { setPendingCount(0) }
+      } else {
+        setPendingCount(0)
+      }
+    }
+    const id = setInterval(checkPending, 5000)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+      clearInterval(id)
+    }
+  }, [])
 
   // Catalog state
   const [products, setProducts]       = useState<Product[]>([])
@@ -319,6 +347,14 @@ export default function POSPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* SYNC STATUS */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 10px', borderRadius: '20px', background: isOnline ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${isOnline ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOnline ? '#22c55e' : '#ef4444', boxShadow: isOnline ? '0 0 8px #22c55e' : 'none' }}></div>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: isOnline ? '#22c55e' : '#ef4444' }}>
+              {isOnline ? (pendingCount > 0 ? `SINCRONIZANDO (${pendingCount})` : 'SISTEMA ONLINE') : 'TRABAJANDO OFFLINE'}
+            </span>
+          </div>
+
           <div className="text-right hide-mobile">
             <div className="text-sm font-bold text-zinc-200">{user?.name}</div>
             <div className="text-[10px] text-zinc-500 uppercase font-black">{time}</div>
@@ -392,8 +428,12 @@ export default function POSPage() {
               <button 
                 key={p.id} 
                 onClick={() => addToCart(p)}
-                className="bg-zinc-950 border border-zinc-900 rounded-xl p-4 cursor-pointer text-center flex flex-col items-center gap-2 transition-all hover:border-green-500 hover:bg-zinc-900 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/10 group"
+                className="glass rounded-xl p-4 cursor-pointer text-center flex flex-col items-center gap-2 transition-all hover:border-green-500 hover:bg-zinc-900/50 hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-500/10 group relative"
+                style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(10px)', border: '1px solid var(--c-border)' }}
               >
+                <div style={{ position: 'absolute', top: '8px', right: '8px' }}>
+                   <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.isActive ? '#22c55e' : '#ef4444', boxShadow: p.isActive ? '0 0 6px #22c55e' : 'none' }}></div>
+                </div>
                 <span className="text-3xl group-hover:scale-110 transition-transform">{p.category?.emoji ?? '📦'}</span>
                 <span className="text-xs font-bold text-white line-clamp-2 leading-tight">{p.name}</span>
                 <span className="text-[10px] text-zinc-500 line-clamp-1 h-3">{p.description ?? ''}</span>

@@ -111,6 +111,30 @@ export default function AdminPage() {
           <button onClick={() => setActiveTab('SECURITY')} className={activeTab === 'SECURITY' ? 'btn-green' : 'btn-ghost'} style={{ marginLeft: 'auto', border: '1px solid #ef444450' }}>🛡️ Auditoría Antifugas</button>
         </div>
 
+        {/* ── BUSINESS INTELLIGENCE QUICK SUMMARY ── */}
+        {activeTab === 'PRODUCTS' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+            <div className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 800 }}>STOCK CRÍTICO</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: '#ef4444' }}>
+                {ingredients.filter(i => i.stock <= i.minStock).length} <span style={{ fontSize: '14px', fontWeight: 400 }}>insumos</span>
+              </div>
+            </div>
+            <div className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 800 }}>CATEGORÍA TOP</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--c-green)' }}>
+                {categories.length > 0 ? categories[0].name : '—'}
+              </div>
+            </div>
+            <div className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 800 }}>VALOR DE INVENTARIO</div>
+              <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--c-text)' }}>
+                ${ingredients.reduce((acc, i) => acc + (i.stock * i.costPerUnit), 0).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading && activeTab !== 'USERS' && activeTab !== 'SECURITY' && activeTab !== 'SUBSCRIPTIONS' ? (
           <div>Cargando datos...</div>
         ) : (
