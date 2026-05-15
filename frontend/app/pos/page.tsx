@@ -39,7 +39,7 @@ export default function POSPage() {
   const router = useRouter()
   const user   = getUser()
 
-  const [time, setTime]             = useState(clock())
+  const [time, setTime]             = useState('')
   const [category, setCategory]     = useState('all')
   const [search, setSearch]         = useState('')
   const [cart, setCart]             = useState<CartItem[]>([])
@@ -112,7 +112,8 @@ export default function POSPage() {
     const token = getToken()
     if (!token) { router.replace('/login'); return }
 
-    const t = setInterval(() => setTime(clock()), 30000)
+    setTime(clock())
+    const timer = setInterval(() => setTime(clock()), 30000)
 
     setCatalogLoading(true)
     Promise.all([
@@ -126,7 +127,7 @@ export default function POSPage() {
     }).catch(console.error)
       .finally(() => setCatalogLoading(false))
 
-    return () => clearInterval(t)
+    return () => clearInterval(timer)
   }, [router])
 
   // Auto-focus search on load
