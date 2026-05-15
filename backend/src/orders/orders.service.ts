@@ -31,6 +31,19 @@ export class OrdersService {
   async create(user: any, data: any) {
     if (!user.branchId) throw new BadRequestException('Usuario no tiene sucursal asignada');
     
+    // Bloqueo de Seguridad: No se puede vender sin una caja abierta
+    const activeRegister = await this.prisma.cashRegister.findFirst({
+      where: { 
+        branchId: user.branchId, 
+        userId: user.id, 
+        status: 'OPEN' 
+      },
+    });
+
+    if (!activeRegister) {
+      throw new BadRequestException('Seguridad: No puedes realizar ventas sin un turno de caja abierto. Por favor, abre caja primero.');
+    }
+
     // Simplificada: crear orden con Prisma Transaction
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({

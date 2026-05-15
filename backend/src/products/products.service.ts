@@ -32,6 +32,13 @@ export class ProductsService {
   }
 
   async create(organizationId: string, data: any) {
+    // Si no viene código de barras, generamos uno interno (EAN-12 aproximado)
+    if (!data.barcode) {
+      const timestamp = Date.now().toString().slice(-6);
+      const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      data.barcode = `${timestamp}${random}`;
+    }
+
     return this.prisma.product.create({
       data: {
         ...data,

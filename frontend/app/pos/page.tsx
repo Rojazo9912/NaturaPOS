@@ -178,8 +178,24 @@ export default function POSPage() {
     p.isActive &&
     (category === 'all' || p.categoryId === category) &&
     (p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.description ?? '').toLowerCase().includes(search.toLowerCase()))
+      (p.description ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      p.barcode === search)
   )
+
+  // Autodetect Barcode Scan
+  useEffect(() => {
+    if (search.length >= 8) {
+      const prod = products.find(p => p.barcode === search)
+      if (prod) {
+        setCart(prev => {
+          const exists = prev.find(i => i.id === prod.id)
+          if (exists) return prev.map(i => i.id === prod.id ? { ...i, qty: i.qty + 1 } : i)
+          return [...prev, { ...prod, qty: 1 }]
+        })
+        setSearch('')
+      }
+    }
+  }, [search, products])
 
   const handleOpenSubModal = async () => {
     const token = getToken()
@@ -286,27 +302,27 @@ export default function POSPage() {
 
       {/* ── Header ── */}
       <header className="flex items-center justify-between px-4 h-14 shrink-0 bg-zinc-950 border-b border-zinc-900 sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-green-500 to-lime-600 flex items-center justify-center text-lg">🌿</div>
-          <span className="font-bold text-sm text-white hide-mobile">Natural</span>
-          <span className="text-xs text-zinc-500 pl-2 border-l border-zinc-800 hide-mobile">
-            {user?.name ? `Cajero: ${user.name}` : 'POS'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 md:gap-6">
-          <span className="text-xl font-bold text-green-500 tabular-nums">
-            {time}
-          </span>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <span className="text-xl font-black text-green-500 tracking-tighter">NATURA OS</span>
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest -mt-1">Enterprise Edition</span>
+          </div>
+          
           <div className="flex gap-4 md:gap-4">
             <a href="/cash-register" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Corte de Caja">💰<span className="hide-mobile ml-1">Caja</span></a>
             <a href="/ventas" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Ventas">📋<span className="hide-mobile ml-1">Ventas</span></a>
             <a href="/inventory" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Stock">📦<span className="hide-mobile ml-1">Stock</span></a>
             <a href="/dashboard" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Dashboard">📊<span className="hide-mobile ml-1">Dashboard</span></a>
           </div>
-          <button onClick={() => { clearSession(); router.push('/login') }}
-            className="text-xs text-zinc-500 bg-transparent border-none cursor-pointer hover:text-red-400">
-            Salir
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="text-right hide-mobile">
+            <div className="text-sm font-bold text-zinc-200">{user?.name}</div>
+            <div className="text-[10px] text-zinc-500 uppercase font-black">{time}</div>
+          </div>
+          <button onClick={() => { clearSession(); router.push('/login') }} className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-red-500 transition-colors">
+            🚪
           </button>
         </div>
       </header>

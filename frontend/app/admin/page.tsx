@@ -194,7 +194,7 @@ function AdminCategories({ categories, onReload }: { categories: Category[], onR
 
 // ── PRODUCTS TAB ───────────────────────────────────────────────────────────
 function AdminProducts({ products, categories, onReload }: { products: Product[], categories: Category[], onReload: () => void }) {
-  const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '' })
+  const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '', barcode: '' })
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: any) => {
@@ -208,8 +208,9 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
         price: Number(form.price),
         categoryId: form.categoryId || undefined,
         description: form.description,
+        barcode: form.barcode || undefined,
       })
-      setForm({ name: '', price: '', categoryId: '', description: '' })
+      setForm({ name: '', price: '', categoryId: '', description: '', barcode: '' })
       onReload()
     } catch (e) {
       console.error(e)
@@ -230,6 +231,7 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
             {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
           </select>
           <textarea className="input-dark" placeholder="Descripción" value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
+          <input className="input-dark" placeholder="Código de Barras (Opcional)" value={form.barcode} onChange={e=>setForm({...form, barcode: e.target.value})} />
           <button type="submit" disabled={submitting} className="btn-green">Crear Producto</button>
         </form>
       </div>
@@ -241,6 +243,7 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
               <th style={{ padding: '16px', fontSize: '13px' }}>Nombre</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Categoría</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Precio</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Código</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Estado</th>
             </tr>
           </thead>
@@ -252,6 +255,7 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
                   {p.category?.emoji} {p.category?.name || '—'}
                 </td>
                 <td style={{ padding: '16px', color: 'var(--c-green)', fontWeight: 700 }}>${p.price}</td>
+                <td style={{ padding: '16px', color: 'var(--c-text-muted)', fontSize: '12px', fontFamily: 'monospace' }}>{p.barcode || '—'}</td>
                 <td style={{ padding: '16px' }}>
                   <button
                     onClick={async () => {

@@ -21,6 +21,7 @@ export interface Product {
   isActive: boolean
   isFavorite: boolean
   description: string | null
+  barcode: string | null
 }
 
 export interface Category {
