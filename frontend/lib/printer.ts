@@ -3,7 +3,7 @@
 export async function printTicketWebUSB(orderData: any) {
   try {
     // Request a generic USB printer (class 7)
-    const device = await navigator.usb.requestDevice({
+    const device = await (navigator as any).usb.requestDevice({
       filters: [{ classCode: 7 }]
     })
 
