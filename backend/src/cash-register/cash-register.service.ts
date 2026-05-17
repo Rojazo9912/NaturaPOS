@@ -139,7 +139,7 @@ export class CashRegisterService {
         branchName: branch?.name,
         totalSales,
         difference,
-        cutData
+        cutData: cutDataAdmin
       }).catch(err => console.error('Error enviando email de cierre:', err));
 
       return { register: updated, summary: { totalSales, totalCash, difference, ordersCount: orders.length } };
