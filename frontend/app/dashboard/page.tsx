@@ -94,7 +94,7 @@ export default function DashboardPage() {
       link.click()
       document.body.removeChild(link)
     } catch (e) {
-      alert('Error exportando CSV')
+      setError('Error exportando CSV')
     }
   }
 

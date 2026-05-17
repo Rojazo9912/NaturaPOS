@@ -3,6 +3,10 @@ export const STORE_NAME = 'pending-orders'
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
+      reject(new Error('IndexedDB is not supported in this environment'))
+      return
+    }
     const request = indexedDB.open(DB_NAME, 1)
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve(request.result)
@@ -24,6 +28,23 @@ export async function savePendingOrder(orderData: any, token: string, apiUrl: st
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
   })
+}
+
+export async function getPendingOrdersCount(): Promise<number> {
+  if (typeof window === 'undefined' || !('indexedDB' in window)) return 0
+  try {
+    const db = await openDB()
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly')
+      const store = tx.objectStore(STORE_NAME)
+      const request = store.count()
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => resolve(0)
+    })
+  } catch (err) {
+    console.error('Error getting pending orders count:', err)
+    return 0
+  }
 }
 
 export async function registerBackgroundSync() {

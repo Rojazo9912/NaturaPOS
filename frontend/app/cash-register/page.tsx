@@ -95,7 +95,7 @@ export default function CashRegisterPage() {
       const items = await apiGetRegisterBreakdown(token, h.id)
       setViewedBreakdown({ h, items })
     } catch (e: any) {
-      alert('Error cargando desglose: ' + e.message)
+      setError('Error cargando desglose: ' + e.message)
     } finally {
       setLoadingBreakdown(false)
     }

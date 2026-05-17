@@ -9,6 +9,8 @@ import {
   apiSearchCustomers, apiCreateOrder,
   apiGetSubscriptionPlans, apiSubscribeCustomer,
   apiCreateCheckoutSession, apiGetActiveRegister,
+  apiGetPendingOrdersCount,
+  apiCreateCustomer,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 import { printTicketWebUSB } from '@/lib/printer'
@@ -77,24 +79,50 @@ export default function POSPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const searchRef = useRef<HTMLInputElement>(null)
 
+  // ── Registro Rápido de Clientes en POS ──
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerEmail, setNewCustomerEmail] = useState('')
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
+
+  const handleQuickRegisterCustomer = async () => {
+    if (!newCustomerName || phoneQuery.length !== 10) return
+    const token = getToken()
+    if (!token) return
+    
+    setCreatingCustomer(true)
+    try {
+      const created = await apiCreateCustomer(token, {
+        name: newCustomerName,
+        phone: phoneQuery,
+        email: newCustomerEmail || undefined
+      })
+      setCustomer(created)
+      addToast(`🎉 Cliente ${created.name} registrado con éxito!`)
+      setNewCustomerName('')
+      setNewCustomerEmail('')
+    } catch (err: any) {
+      addToast(`❌ Error: ${err.message || 'No se pudo registrar cliente'}`)
+    } finally {
+      setCreatingCustomer(false)
+    }
+  }
+
   // Monitor connectivity
   useEffect(() => {
     const update = () => setIsOnline(navigator.onLine)
     window.addEventListener('online', update)
     window.addEventListener('offline', update)
     
-    // Check pending orders from localStorage
-    const checkPending = () => {
-      const raw = localStorage.getItem('pending_orders')
-      if (raw) {
-        try {
-          const list = JSON.parse(raw)
-          setPendingCount(list.length)
-        } catch { setPendingCount(0) }
-      } else {
+    // Check pending orders from IndexedDB
+    const checkPending = async () => {
+      try {
+        const count = await apiGetPendingOrdersCount()
+        setPendingCount(count)
+      } catch {
         setPendingCount(0)
       }
     }
+    checkPending() // Carga inicial inmediata
     const id = setInterval(checkPending, 5000)
     return () => {
       window.removeEventListener('online', update)
@@ -175,6 +203,27 @@ export default function POSPage() {
   const finalTotal  = Math.max(0, subtotal - discount - redeemed)
   const pointsEarned = Math.floor(finalTotal * 0.10)
   const change      = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
+
+  // ── IA Predictiva: Algoritmo de Sugerencia de Venta (Upselling) ──
+  const upsellRecommendations = (() => {
+    if (cart.length === 0 || products.length === 0) return []
+    const cartIds = new Set(cart.map(item => item.id))
+    
+    // Filtrar productos activos y que NO estén ya en el carrito
+    const candidates = products.filter(p => !cartIds.has(p.id) && p.isActive)
+    
+    // Regla de Afinidad Wellness: priorizar extras, shots, proteínas, colágenos (con soporte robusto de acentos)
+    const extras = candidates.filter(p => 
+      /shot|extra|prote[íi]n|col[áa]gen|adici[óo]n|adici[óo]|jengibre|maca|cacao|espirul|suplement/i.test(p.name)
+    )
+    
+    if (extras.length > 0) {
+      return extras.slice(0, 2)
+    }
+    
+    // Si no hay extras específicos en catálogo, sugerir los 2 productos más económicos (snacks rápidos o aguas)
+    return candidates.sort((a, b) => a.price - b.price).slice(0, 2)
+  })()
 
   const handlePay = useCallback(async () => {
     if (paying || cart.length === 0) return
@@ -292,7 +341,7 @@ export default function POSPage() {
       setPlans(p)
       setShowSubModal(true)
     } catch (e) {
-      alert('Error al cargar planes')
+      addToast('❌ Error al cargar planes de suscripción')
     }
   }
 
@@ -303,10 +352,10 @@ export default function POSPage() {
     setSubmittingSub(true)
     try {
       await apiSubscribeCustomer(token, customer.id, planId)
-      alert('¡Cliente suscrito con éxito!')
+      addToast('🎉 ¡Cliente suscrito con éxito!')
       setShowSubModal(false)
     } catch (e) {
-      alert('Error al suscribir')
+      addToast('❌ Error al suscribir cliente')
     } finally {
       setSubmittingSub(false)
     }
@@ -321,7 +370,7 @@ export default function POSPage() {
       const { url } = await apiCreateCheckoutSession(token, customer.id, planId)
       window.location.href = url
     } catch (e) {
-      alert('Error al iniciar pago con Stripe')
+      addToast('❌ Error al iniciar pago con Stripe')
     } finally {
       setSubmittingSub(false)
     }
@@ -500,6 +549,34 @@ export default function POSPage() {
                 </button>
               </>
             )}
+
+            {!customerLoading && !customer && phoneQuery.length === 10 && (
+              <div className="mt-3 p-3 rounded-lg bg-zinc-900/50 border border-dashed border-zinc-800 animate-fadeIn space-y-3">
+                <div className="text-[11px] text-zinc-400">📱 Cliente nuevo no registrado. ¿Deseas darlo de alta?</div>
+                <div className="space-y-2">
+                  <input
+                    value={newCustomerName}
+                    onChange={e => setNewCustomerName(e.target.value)}
+                    placeholder="Nombre completo..."
+                    className="input-dark w-full p-2 text-xs"
+                  />
+                  <input
+                    value={newCustomerEmail}
+                    onChange={e => setNewCustomerEmail(e.target.value)}
+                    placeholder="Correo (opcional)..."
+                    className="input-dark w-full p-2 text-xs"
+                    type="email"
+                  />
+                  <button
+                    onClick={handleQuickRegisterCustomer}
+                    className="btn-green w-full py-1.5 text-xs font-bold"
+                    disabled={creatingCustomer || !newCustomerName}
+                  >
+                    {creatingCustomer ? 'Registrando...' : '✅ Registrar y Seleccionar'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Cart Items */}
@@ -526,6 +603,56 @@ export default function POSPage() {
               </div>
             ))}
           </div>
+
+          {/* IA Predictiva: Upselling Panel */}
+          {cart.length > 0 && upsellRecommendations.length > 0 && (
+            <div style={{
+              margin: '10px 16px', padding: '12px 14px',
+              background: 'rgba(34,197,94,0.03)',
+              border: '1px dashed rgba(34,197,94,0.2)',
+              borderRadius: '12px',
+              animation: 'fadeIn 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px' }}>✨</span>
+                <span style={{ fontSize: '11px', fontWeight: 900, color: 'rgba(34,197,94,0.85)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Natura IA: Sugerencia de Venta
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {upsellRecommendations.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: '14px' }}>{p.category?.emoji || '🌿'}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#e4e4e7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => addToCart(p)}
+                      style={{
+                        padding: '4px 8px', borderRadius: '6px',
+                        background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
+                        color: '#22c55e', fontSize: '10px', fontWeight: 700,
+                        cursor: 'pointer', transition: 'all 0.2s ease',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#22c55e';
+                        e.currentTarget.style.color = '#000';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(34,197,94,0.15)';
+                        e.currentTarget.style.color = '#22c55e';
+                      }}
+                    >
+                      + {fmt(p.price)}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Cart Footer / Checkout */}
           <div className="p-4 bg-zinc-950 border-t border-zinc-900 space-y-4 shrink-0">
@@ -803,7 +930,10 @@ export default function POSPage() {
             <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--c-surface-1)', borderTop: '1px solid var(--c-border)' }}>
               <button onClick={async () => {
                 const ok = await printTicketWebUSB(lastOrder);
-                if (!ok) window.print(); // Fallback
+                if (!ok) {
+                  addToast("⚠️ Conexión directa USB no detectada o denegada. Abriendo diálogo del navegador...");
+                  window.print(); // Fallback
+                }
               }} className="btn-green" style={{ padding: '14px', fontSize: '15px' }}>
                 ⚡ Imprimir Directo (USB)
               </button>

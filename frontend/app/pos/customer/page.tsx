@@ -18,6 +18,7 @@ export default function CustomerDisplay() {
   const router = useRouter()
   const [payload, setPayload] = useState<CartPayload>({ cart: [], subtotal: 0, discount: 0, total: 0 })
   const [orgName, setOrgName] = useState('Natura OS')
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
 
   useEffect(() => {
     const user = getUser()
@@ -44,8 +45,10 @@ export default function CustomerDisplay() {
     // Listen for new_order (payment success)
     socket.on('new_order', () => {
       setPayload({ cart: [], subtotal: 0, discount: 0, total: 0 })
-      // Podriamos mostrar "¡Pago Exitoso! Gracias por tu compra" con un timeout
-      alert('¡Pago exitoso! Gracias por tu compra 🌿')
+      setShowSuccessOverlay(true)
+      setTimeout(() => {
+        setShowSuccessOverlay(false)
+      }, 5000)
     })
 
     return () => {
@@ -133,6 +136,52 @@ export default function CustomerDisplay() {
         </div>
 
       </div>
+
+      {showSuccessOverlay && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.5s ease',
+        }}>
+          <div style={{
+            background: 'var(--c-surface-1, #081008)',
+            border: '1px solid var(--c-border, #1a2e1a)',
+            boxShadow: '0 0 50px rgba(34, 197, 94, 0.25)',
+            borderRadius: '32px', padding: '60px 40px',
+            textAlign: 'center', maxWidth: '480px', width: '90%',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px'
+          }}>
+            <div style={{
+              width: '100px', height: '100px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #22c55e, #a3e635)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '48px', boxShadow: '0 0 30px rgba(34, 197, 94, 0.4)',
+              animation: 'pulse-green 2s infinite'
+            }}>
+              🌿
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#fff', letterSpacing: '-0.025em', margin: 0 }}>
+                ¡Muchas Gracias!
+              </h2>
+              <p style={{ fontSize: '18px', color: '#22c55e', fontWeight: 700, margin: '4px 0 0 0' }}>
+                Tu orden ha sido recibida con éxito
+              </p>
+            </div>
+
+            <p style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.6', maxWidth: '340px', margin: 0 }}>
+              Tu smoothie y snacks se están preparando con ingredientes frescos del día. ¡Disfruta tu estilo de vida wellness!
+            </p>
+            
+            <div style={{ fontSize: '12px', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>
+              Natural by Nutrit
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

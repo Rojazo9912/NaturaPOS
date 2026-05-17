@@ -69,8 +69,8 @@ export class CashRegisterService {
         },
       });
 
-      // Crear corte A y B
-      const cutData = {
+      // Crear corte A (Administrativo/Real - Verdad absoluta del negocio)
+      const cutDataAdmin = {
         cashRegisterId: id,
         totalSales,
         totalCash,
@@ -85,12 +85,33 @@ export class CashRegisterService {
         netProfit: totalSales - totalCost,
         taxAmount: orders.reduce((s, o) => s + (o.taxAmount || 0), 0),
         notes,
+        type: 'ADMIN' as const,
+      };
+
+      // Crear corte B (Fiscal/Contable - Filtra pagos rastreables)
+      const fiscalSales = totalCard + totalTransfer + totalQR;
+      const cutDataFiscal = {
+        cashRegisterId: id,
+        totalSales: fiscalSales,
+        totalCash: 0, // El efectivo no facturado no deja rastro fiscal bancario directo
+        totalCard,
+        totalTransfer,
+        totalWallet: 0, // Wallet interna no fiscal
+        totalQR,
+        totalRefunds: 0,
+        totalDiscounts: 0, // Los descuentos son de operación interna
+        totalWaste: 0,
+        grossProfit: fiscalSales - (totalCost * (fiscalSales / (totalSales || 1))),
+        netProfit: fiscalSales - (totalCost * (fiscalSales / (totalSales || 1))),
+        taxAmount: orders.reduce((s, o) => s + (o.taxAmount || 0), 0),
+        notes: notes ? `Fiscal - ${notes}` : 'Corte Fiscal de Turno',
+        type: 'FISCAL' as const,
       };
 
       await tx.financialCut.createMany({
         data: [
-          { ...cutData, type: 'ADMIN' },
-          { ...cutData, type: 'FISCAL' },
+          cutDataAdmin,
+          cutDataFiscal,
         ],
       });
 

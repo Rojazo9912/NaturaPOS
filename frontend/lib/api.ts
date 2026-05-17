@@ -139,8 +139,11 @@ export async function apiCreateCustomer(token: string, data: { name: string; pho
   return res.json()
 }
 
-// ── Orders ─────────────────────────────────────────────
-import { savePendingOrder, registerBackgroundSync } from './offline'
+import { savePendingOrder, registerBackgroundSync, getPendingOrdersCount } from './offline'
+
+export async function apiGetPendingOrdersCount(): Promise<number> {
+  return getPendingOrdersCount()
+}
 
 export async function apiCreateOrder(token: string, data: {
   customerId?: string

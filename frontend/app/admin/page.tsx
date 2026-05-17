@@ -41,6 +41,15 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
 
+  // Custom Toast State
+  const [toasts, setToasts] = useState<string[]>([])
+  const addToast = (msg: string) => {
+    setToasts(prev => [...prev, msg])
+    setTimeout(() => {
+      setToasts(prev => prev.slice(1))
+    }, 4000)
+  }
+
   // Load Data
   const loadData = async () => {
     const token = getToken()
@@ -141,22 +150,35 @@ export default function AdminPage() {
           <div>Cargando datos...</div>
         ) : (
           <div>
-            {activeTab === 'PRODUCTS' && <AdminProducts products={products} categories={categories} onReload={loadData} />}
-            {activeTab === 'CATEGORIES' && <AdminCategories categories={categories} onReload={loadData} />}
-            {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} />}
-            {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} />}
-            {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptions />}
-            {activeTab === 'USERS' && <AdminUsers />}
-            {activeTab === 'SECURITY' && <AdminSecurity />}
+            {activeTab === 'PRODUCTS' && <AdminProducts products={products} categories={categories} onReload={loadData} addToast={addToast} />}
+            {activeTab === 'CATEGORIES' && <AdminCategories categories={categories} onReload={loadData} addToast={addToast} />}
+            {activeTab === 'INGREDIENTS' && <AdminIngredients ingredients={ingredients} onReload={loadData} addToast={addToast} />}
+            {activeTab === 'RECIPES' && <AdminRecipes products={products} ingredients={ingredients} addToast={addToast} />}
+            {activeTab === 'SUBSCRIPTIONS' && <AdminSubscriptions addToast={addToast} />}
+            {activeTab === 'USERS' && <AdminUsers addToast={addToast} />}
+            {activeTab === 'SECURITY' && <AdminSecurity addToast={addToast} />}
           </div>
         )}
+      </div>
+
+      {/* Toast Messages Overlay */}
+      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {toasts.map((toast, i) => (
+          <div key={i} className="glass" style={{
+            padding: '16px 20px', borderRadius: '12px', borderLeft: '4px solid #22c55e',
+            color: '#fff', fontSize: '13px', fontWeight: 600, animation: 'fadeIn 0.2s ease',
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)', minWidth: '280px'
+          }}>
+            {toast}
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
 // ── CATEGORIES TAB ─────────────────────────────────────────────────────────
-function AdminCategories({ categories, onReload }: { categories: Category[], onReload: () => void }) {
+function AdminCategories({ categories, onReload, addToast }: { categories: Category[], onReload: () => void, addToast: (msg: string) => void }) {
   const [form, setForm] = useState({ name: '', emoji: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -168,9 +190,10 @@ function AdminCategories({ categories, onReload }: { categories: Category[], onR
     try {
       await apiCreateCategory(token, { name: form.name, emoji: form.emoji || undefined })
       setForm({ name: '', emoji: '' })
+      addToast('🎉 Categoría creada exitosamente')
       onReload()
     } catch (err: any) {
-      alert(err.message)
+      addToast(`❌ Error: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
@@ -220,7 +243,7 @@ function AdminCategories({ categories, onReload }: { categories: Category[], onR
 }
 
 // ── PRODUCTS TAB ───────────────────────────────────────────────────────────
-function AdminProducts({ products, categories, onReload }: { products: Product[], categories: Category[], onReload: () => void }) {
+function AdminProducts({ products, categories, onReload, addToast }: { products: Product[], categories: Category[], onReload: () => void, addToast: (msg: string) => void }) {
   const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '', barcode: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -237,10 +260,11 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
         description: form.description,
         barcode: form.barcode || undefined,
       })
+      addToast(`🎉 Producto "${form.name}" creado con éxito`)
       setForm({ name: '', price: '', categoryId: '', description: '', barcode: '' })
       onReload()
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      addToast(`❌ Error: ${e.message || 'No se pudo crear producto'}`)
     } finally {
       setSubmitting(false)
     }
@@ -290,8 +314,11 @@ function AdminProducts({ products, categories, onReload }: { products: Product[]
                       if (!token) return
                       try {
                         await apiUpdateProduct(token, p.id, { isActive: !p.isActive })
+                        addToast(`⚡ Producto "${p.name}" ${!p.isActive ? 'activado' : 'desactivado'}`)
                         onReload()
-                      } catch { /* ignore */ }
+                      } catch (err: any) {
+                        addToast(`❌ Error: ${err.message || 'No se pudo actualizar estado'}`)
+                      }
                     }}
                     style={{
                       padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
@@ -395,7 +422,7 @@ function AdjustStockCell({ ingredientId, onDone }: { ingredientId: string; onDon
 }
 
 // ── INGREDIENTS TAB ────────────────────────────────────────────────────────
-function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[], onReload: () => void }) {
+function AdminIngredients({ ingredients, onReload, addToast }: { ingredients: Ingredient[], onReload: () => void, addToast: (msg: string) => void }) {
   const [form, setForm] = useState({ name: '', unit: 'GRAM', costPerUnit: '', minStock: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -411,10 +438,11 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
         costPerUnit: Number(form.costPerUnit),
         minStock: Number(form.minStock),
       })
+      addToast(`🎉 Insumo "${form.name}" creado con éxito`)
       setForm({ name: '', unit: 'GRAM', costPerUnit: '', minStock: '' })
       onReload()
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      addToast(`❌ Error: ${e.message || 'No se pudo crear insumo'}`)
     } finally {
       setSubmitting(false)
     }
@@ -482,7 +510,7 @@ function AdminIngredients({ ingredients, onReload }: { ingredients: Ingredient[]
 }
 
 // ── RECIPES TAB ────────────────────────────────────────────────────────────
-function AdminRecipes({ products, ingredients }: { products: Product[], ingredients: Ingredient[] }) {
+function AdminRecipes({ products, ingredients, addToast }: { products: Product[], ingredients: Ingredient[], addToast: (msg: string) => void }) {
   const [selectedProduct, setSelectedProduct] = useState('')
   const [recipeItems, setRecipeItems] = useState<{ingredientId: string, quantity: number}[]>([])
   const [loadingRecipe, setLoadingRecipe] = useState(false)
@@ -528,10 +556,10 @@ function AdminRecipes({ products, ingredients }: { products: Product[], ingredie
       })
 
       await apiUpsertRecipe(token, selectedProduct, { yieldQty: 1, items: itemsToSave })
-      alert('Receta guardada exitosamente')
+      addToast('✅ Receta guardada exitosamente')
     } catch (e) {
       console.error(e)
-      alert('Error guardando receta')
+      addToast('❌ Error guardando receta')
     } finally {
       setSaving(false)
     }
@@ -578,7 +606,7 @@ function AdminRecipes({ products, ingredients }: { products: Product[], ingredie
 }
 
 // ── SECURITY TAB ───────────────────────────────────────────────────────────
-function AdminSecurity() {
+function AdminSecurity({ addToast }: { addToast: (msg: string) => void }) {
   const [alerts, setAlerts] = useState<any[]>([])
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -608,9 +636,10 @@ function AdminSecurity() {
     if (!token) return
     try {
       await apiResolveRiskAlert(token, id)
+      addToast('✅ Alerta marcada como resuelta')
       loadSecurityData()
     } catch (e) {
-      alert('Error resolviendo alerta')
+      addToast('❌ Error resolviendo alerta')
     }
   }
 
@@ -690,7 +719,7 @@ function AdminSecurity() {
 }
 
 // ── SUBSCRIPTIONS TAB ──────────────────────────────────────────────────────
-function AdminSubscriptions() {
+function AdminSubscriptions({ addToast }: { addToast: (msg: string) => void }) {
   const [plans, setPlans] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ name: '', description: '', price: '', intervalDays: '30', smoothiesQty: '', discountPct: '0' })
@@ -726,11 +755,11 @@ function AdminSubscriptions() {
         smoothiesQty: form.smoothiesQty ? parseInt(form.smoothiesQty) : null,
         discountPct: parseFloat(form.discountPct),
       })
-      alert('Plan de suscripción creado con éxito')
+      addToast('🎉 Plan de suscripción creado con éxito')
       setForm({ name: '', description: '', price: '', intervalDays: '30', smoothiesQty: '', discountPct: '0' })
       loadPlans()
     } catch (err: any) {
-      alert(err.message)
+      addToast(`❌ Error: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
@@ -828,7 +857,7 @@ const ROLE_INFO: Record<string, { label: string, color: string, can: string[], c
 }
 
 // ── BRANCHES SECTION ────────────────────────────────────────────────────────
-function AdminBranches({ branches, onReload }: { branches: any[], onReload: () => void }) {
+function AdminBranches({ branches, onReload, addToast }: { branches: any[], onReload: () => void, addToast: (msg: string) => void }) {
   const [form, setForm] = useState({ name: '', address: '', phone: '' })
   const [submitting, setSubmitting] = useState(false)
 
@@ -840,10 +869,10 @@ function AdminBranches({ branches, onReload }: { branches: any[], onReload: () =
     try {
       await apiCreateBranch(token, form)
       setForm({ name: '', address: '', phone: '' })
-      alert('Sucursal creada exitosamente')
+      addToast('🎉 Sucursal creada exitosamente')
       onReload()
     } catch (err: any) {
-      alert(err.message)
+      addToast(`❌ Error: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
@@ -887,7 +916,7 @@ function AdminBranches({ branches, onReload }: { branches: any[], onReload: () =
   )
 }
 
-function AdminUsers() {
+function AdminUsers({ addToast }: { addToast: (msg: string) => void }) {
   const [users, setUsers] = useState<any[]>([])
   const [branches, setBranches] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -919,11 +948,11 @@ function AdminUsers() {
     setSubmitting(true)
     try {
       await apiCreateUser(token, form)
-      alert('Usuario creado con éxito')
+      addToast('🎉 Usuario creado con éxito')
       setForm({ name: '', email: '', password: '', role: 'CASHIER', branchId: '', phone: '' })
       loadUsers()
     } catch (err: any) {
-      alert(err.message)
+      addToast(`❌ Error: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
@@ -933,7 +962,7 @@ function AdminUsers() {
 
   return (
     <div>
-      <AdminBranches branches={branches} onReload={loadUsers} />
+      <AdminBranches branches={branches} onReload={loadUsers} addToast={addToast} />
       
       <div className="admin-grid">
       <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
