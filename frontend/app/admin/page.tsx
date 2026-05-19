@@ -1121,7 +1121,7 @@ const CODE39_MAP: Record<string, string> = {
   '$': '100100100101', '/': '100100101001', '+': '100101001001', '%': '101001001001'
 };
 
-function Barcode({ value }: { value: string }) {
+function Barcode({ value, barWidth = 1.2, height = 35 }: { value: string; barWidth?: number; height?: number }) {
   const cleanVal = value.toUpperCase().replace(/[^0-9A-Z\-\.\s\$\/\+\%]/g, '');
   const padded = `*${cleanVal}*`;
   let bitString = '';
@@ -1131,9 +1131,6 @@ function Barcode({ value }: { value: string }) {
   }
 
   const rects = [];
-  const barWidth = 1.5; // narrow unit width
-  const height = 45; // bar height
-  
   for (let i = 0; i < bitString.length; i++) {
     if (bitString[i] === '1') {
       rects.push(
@@ -1156,7 +1153,7 @@ function Barcode({ value }: { value: string }) {
       <svg width={svgWidth} height={height}>
         {rects}
       </svg>
-      <div style={{ fontSize: '10px', fontFamily: 'monospace', letterSpacing: '3px', marginTop: '2px', color: 'black' }}>
+      <div style={{ fontSize: '9px', fontFamily: 'monospace', letterSpacing: '2px', marginTop: '3px', color: 'black' }}>
         {cleanVal}
       </div>
     </div>
@@ -1175,6 +1172,18 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
   
   // Autogenerate temporary barcode if not defined
   const barcodeValue = product.barcode || `NAT-${product.id.slice(-6).toUpperCase()}`;
+
+  // Dynamically calculate optimal bar width and height to fit the label paper size perfectly without CSS transforms
+  const cleanValForBar = barcodeValue.toUpperCase().replace(/[^0-9A-Z\-\.\s\$\/\+\%]/g, '');
+  const bitStringLength = (cleanValForBar.length + 2) * 13;
+  const labelWidthPx = labelWidth * 3.78; // 1mm = 3.78px
+  const labelHeightPx = labelHeight * 3.78;
+  
+  // Available width leaves a 10px margin on each side (total 20px)
+  const optimalBarWidth = Math.max(0.7, Math.min(1.5, (labelWidthPx - 20) / bitStringLength));
+  
+  // Available height leaves about 72px for branding, product name, price, margins
+  const optimalBarHeight = Math.max(18, Math.min(40, labelHeightPx - 72));
 
   const handlePrint = () => {
     window.print();
@@ -1266,13 +1275,29 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
               justifyContent: 'center',
               boxSizing: 'border-box',
               overflow: 'hidden',
-              padding: '8px',
+              padding: '6px',
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             }}>
-              <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
-              <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
-              <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0' }}>${product.price}</div>
-              <div style={{ transform: 'scale(0.85)', transformOrigin: 'center', margin: '2px 0' }}>
-                <Barcode value={barcodeValue} />
+              <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px', lineHeight: '1.2' }}>Natural by Nutrit</div>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 900,
+                width: '100%',
+                textAlign: 'center',
+                lineHeight: '1.3',
+                margin: '2px 0',
+                paddingTop: '1px',
+                paddingBottom: '1px',
+                wordBreak: 'break-word',
+                maxHeight: '2.6em',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}>{product.name}</div>
+              <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0', lineHeight: '1.2' }}>${product.price}</div>
+              <div style={{ margin: '2px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Barcode value={barcodeValue} barWidth={optimalBarWidth} height={optimalBarHeight} />
               </div>
             </div>
           </div>
@@ -1312,12 +1337,28 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
           color: 'black',
           padding: '6px',
           boxSizing: 'border-box',
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         }}>
-          <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
-          <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
-          <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0' }}>${product.price}</div>
-          <div style={{ transform: 'scale(0.85)', transformOrigin: 'center', margin: '2px 0' }}>
-            <Barcode value={barcodeValue} />
+          <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px', lineHeight: '1.2' }}>Natural by Nutrit</div>
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 900,
+            width: '100%',
+            textAlign: 'center',
+            lineHeight: '1.3',
+            margin: '2px 0',
+            paddingTop: '1px',
+            paddingBottom: '1px',
+            wordBreak: 'break-word',
+            maxHeight: '2.6em',
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+          }}>{product.name}</div>
+          <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0', lineHeight: '1.2' }}>${product.price}</div>
+          <div style={{ margin: '2px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Barcode value={barcodeValue} barWidth={optimalBarWidth} height={optimalBarHeight} />
           </div>
         </div>
       </div>
