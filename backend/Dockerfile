@@ -36,4 +36,4 @@ ENV NODE_ENV=production
 # Railway asigna PORT automáticamente — no hardcodear
 EXPOSE ${PORT:-8080}
 
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "npx prisma db push && node dist/main.js"]
