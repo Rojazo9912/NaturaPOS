@@ -28,6 +28,7 @@ export default function CashRegisterPage() {
   const [openingAmount, setOpeningAmount] = useState('')
   const [closingAmount, setClosingAmount] = useState('')
   const [notes, setNotes]                 = useState('')
+  const [fiscalPercentage, setFiscalPercentage] = useState('30')
   const [error, setError]                 = useState('')
   const [submitting, setSubmitting]       = useState(false)
   const [closeSummary, setCloseSummary]   = useState<any>(null)
@@ -75,7 +76,7 @@ export default function CashRegisterPage() {
     if (!token || !activeReg || !closingAmount) return
     setSubmitting(true); setError('')
     try {
-      const result = await apiCloseRegister(token, activeReg.id, Number(closingAmount), notes)
+      const result = await apiCloseRegister(token, activeReg.id, Number(closingAmount), notes, Number(fiscalPercentage))
       setCloseSummary(result?.summary || null)
       await loadData()
       setClosingAmount('')
@@ -190,6 +191,24 @@ export default function CashRegisterPage() {
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">% de Efectivo a Declarar (Corte Fiscal)</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        min="0"
+                        max="100"
+                        value={fiscalPercentage} 
+                        onChange={e => setFiscalPercentage(e.target.value)}
+                        placeholder="30" 
+                        className="input-dark w-full p-4 font-bold text-purple-400 pr-12" 
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">%</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-600 mt-1">
+                      Porcentaje de ventas en efectivo declarables en el Corte B.
+                    </p>
+                  </div>
+                  <div>
                     <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Notas (opcional)</label>
                     <textarea 
                       value={notes} 
@@ -302,8 +321,16 @@ export default function CashRegisterPage() {
                 <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalCash)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>En Tarjeta/Transf</span>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>En Tarjeta (Terminal)</span>
                 <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalCard)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>En Transferencia (SPEI)</span>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalTransfer || 0)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ color: 'var(--c-text-muted)', fontSize: '14px' }}>En Código QR / Digital</span>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--c-text)' }}>{fmt(viewedCut.cut.totalQR || 0)}</span>
               </div>
               
               <div style={{ borderTop: '1px dashed var(--c-border)', margin: '16px 0' }}></div>
@@ -376,8 +403,16 @@ export default function CashRegisterPage() {
                 <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.cut.totalCash)}</td>
               </tr>
               <tr>
-                <td style={{ paddingBottom: '4px' }}>- Otros (Tarjeta/QR):</td>
+                <td style={{ paddingBottom: '4px' }}>- Tarjeta (Terminal):</td>
                 <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.cut.totalCard)}</td>
+              </tr>
+              <tr>
+                <td style={{ paddingBottom: '4px' }}>- SPEI (Transferencia):</td>
+                <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.cut.totalTransfer || 0)}</td>
+              </tr>
+              <tr>
+                <td style={{ paddingBottom: '4px' }}>- Código QR:</td>
+                <td style={{ textAlign: 'right', paddingBottom: '4px' }}>{fmt(viewedCut.cut.totalQR || 0)}</td>
               </tr>
             </tbody>
           </table>

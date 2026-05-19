@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import PDFDocument from 'pdfkit';
 
 @Injectable()
 export class CashRegisterService {
@@ -22,7 +23,7 @@ export class CashRegisterService {
     });
   }
 
-  async close(id: string, userId: string, closingAmount: number, notes?: string) {
+  async close(id: string, userId: string, closingAmount: number, notes?: string, fiscalPercentage?: number) {
     const register = await this.prisma.cashRegister.findFirst({
       where: { id, userId, status: 'OPEN' },
     });
@@ -56,6 +57,15 @@ export class CashRegisterService {
     const expectedAmount = register.openingAmount + totalCash;
     const difference     = closingAmount - expectedAmount;
 
+    // Calcular porcentaje de declaración fiscal de efectivo
+    let percentage = fiscalPercentage !== undefined ? fiscalPercentage : parseFloat(process.env.FISCAL_CASH_PERCENTAGE || '0.30');
+    if (percentage > 1) {
+      percentage = percentage / 100;
+    }
+    const declaredCash = totalCash * percentage;
+    const fiscalSales = totalCard + totalTransfer + totalQR + declaredCash;
+    const totalTax = orders.reduce((s, o) => s + (o.taxAmount || 0), 0);
+
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.cashRegister.update({
         where: { id },
@@ -83,17 +93,16 @@ export class CashRegisterService {
         totalWaste: 0,
         grossProfit: totalSales - totalCost,
         netProfit: totalSales - totalCost,
-        taxAmount: orders.reduce((s, o) => s + (o.taxAmount || 0), 0),
+        taxAmount: totalTax,
         notes,
         type: 'ADMIN' as const,
       };
 
-      // Crear corte B (Fiscal/Contable - Filtra pagos rastreables)
-      const fiscalSales = totalCard + totalTransfer + totalQR;
+      // Crear corte B (Fiscal/Contable - Filtra pagos rastreables + porcentaje cash)
       const cutDataFiscal = {
         cashRegisterId: id,
         totalSales: fiscalSales,
-        totalCash: 0, // El efectivo no facturado no deja rastro fiscal bancario directo
+        totalCash: declaredCash,
         totalCard,
         totalTransfer,
         totalWallet: 0, // Wallet interna no fiscal
@@ -103,8 +112,8 @@ export class CashRegisterService {
         totalWaste: 0,
         grossProfit: fiscalSales - (totalCost * (fiscalSales / (totalSales || 1))),
         netProfit: fiscalSales - (totalCost * (fiscalSales / (totalSales || 1))),
-        taxAmount: orders.reduce((s, o) => s + (o.taxAmount || 0), 0),
-        notes: notes ? `Fiscal - ${notes}` : 'Corte Fiscal de Turno',
+        taxAmount: totalTax * (fiscalSales / (totalSales || 1)),
+        notes: notes ? `Fiscal (${Math.round(percentage * 100)}%) - ${notes}` : `Corte Fiscal de Turno (${Math.round(percentage * 100)}%)`,
         type: 'FISCAL' as const,
       };
 
@@ -138,8 +147,15 @@ export class CashRegisterService {
         cashierName: user?.name,
         branchName: branch?.name,
         totalSales,
+        totalCost,
+        openingAmount: register.openingAmount,
+        closingAmount,
+        expectedAmount,
         difference,
-        cutData: cutDataAdmin
+        taxAmount: totalTax,
+        notes,
+        cutDataAdmin,
+        cutDataFiscal
       }).catch(err => console.error('Error enviando email de cierre:', err));
 
       return { register: updated, summary: { totalSales, totalCash, difference, ordersCount: orders.length } };
@@ -155,19 +171,44 @@ export class CashRegisterService {
 
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-        <h1 style="color: #166534; text-align: center;">Cierre de Caja - ${data.branchName || 'Sucursal'}</h1>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #166534; margin: 0; font-size: 24px;">Cierre de Caja - Natural OS 🌿</h1>
+          <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">Reporte de Cierre de Caja A/B Contable</p>
+        </div>
+        
         <p><strong>Cajero:</strong> ${data.cashierName}</p>
         <p><strong>Ventas Totales (Bruto):</strong> $${data.totalSales.toFixed(2)}</p>
         <p><strong>Diferencia Físico vs Sistema:</strong> <span style="color: ${data.difference < 0 ? '#ef4444' : '#22c55e'}; font-weight: bold;">$${data.difference.toFixed(2)}</span></p>
+        
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-        <h2 style="font-size: 18px; color: #374151;">Detalle del Corte:</h2>
+        
+        <h2 style="font-size: 18px; color: #374151; margin-bottom: 10px;">Detalle del Corte A (Operativo Real):</h2>
         <ul>
-          <li>Efectivo: $${data.cutData.totalCash.toFixed(2)}</li>
-          <li>Tarjeta: $${data.cutData.totalCard.toFixed(2)}</li>
-          <li>Transferencia: $${data.cutData.totalTransfer.toFixed(2)}</li>
-          <li>Wallet/Puntos: $${data.cutData.totalWallet.toFixed(2)}</li>
-          <li>Descuentos: $${data.cutData.totalDiscounts.toFixed(2)}</li>
+          <li>Fondo Inicial Apertura: $${data.openingAmount.toFixed(2)}</li>
+          <li>Efectivo en Caja Recibido: $${data.cutDataAdmin.totalCash.toFixed(2)}</li>
+          <li>Cobros con Tarjeta: $${data.cutDataAdmin.totalCard.toFixed(2)}</li>
+          <li>Cobros por Transferencia: $${data.cutDataAdmin.totalTransfer.toFixed(2)}</li>
+          <li>Cobros con Wallet/Puntos: $${data.cutDataAdmin.totalWallet.toFixed(2)}</li>
+          <li>Cobros con Código QR: $${data.cutDataAdmin.totalQR.toFixed(2)}</li>
+          <li>Descuentos Aplicados: $${data.cutDataAdmin.totalDiscounts.toFixed(2)}</li>
+          <li>Efectivo Esperado: $${data.expectedAmount.toFixed(2)}</li>
+          <li>Efectivo Físico Declarado: $${data.closingAmount.toFixed(2)}</li>
         </ul>
+
+        <h2 style="font-size: 18px; color: #1e40af; margin-top: 20px; margin-bottom: 10px;">Detalle del Corte B (Fiscal Contable):</h2>
+        <ul>
+          <li>Cobros Bancarios Registrados: $${(data.cutDataFiscal.totalCard + data.cutDataFiscal.totalTransfer + data.cutDataFiscal.totalQR).toFixed(2)}</li>
+          <li>Efectivo Declarado: $${data.cutDataFiscal.totalCash.toFixed(2)}</li>
+          <li>Ventas Totales Declaradas: $${data.cutDataFiscal.totalSales.toFixed(2)}</li>
+          <li>Impuesto IVA Estimado (IVA Proporcional): $${data.cutDataFiscal.taxAmount.toFixed(2)}</li>
+        </ul>
+        
+        <div style="background-color: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 20px; font-size: 13px;">
+          <strong>Nota de Cierre:</strong> ${data.notes || 'Ninguna registrada.'}
+        </div>
+        
+        <p style="margin-top: 20px; font-size: 14px;">Se adjunta a este correo el reporte oficial en formato PDF conteniendo los desgloses de los <strong>Cortes A (Administrativo) y B (Fiscal)</strong> para su archivo y contabilidad.</p>
+        
         <div style="text-align: center; margin-top: 30px; font-size: 12px; color: #6b7280;">
           <p>Enviado automáticamente por Natural OS 🌿</p>
         </div>
@@ -175,6 +216,7 @@ export class CashRegisterService {
     `;
 
     try {
+      const pdfBuffer = await this.generateClosurePDF(data);
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -185,7 +227,13 @@ export class CashRegisterService {
           from: 'Natural OS <onboarding@resend.dev>', // Resend test domain
           to: data.adminEmail,
           subject: `Corte de Caja - ${data.branchName || 'Sucursal'} - ${new Date().toLocaleDateString()}`,
-          html: html
+          html: html,
+          attachments: [
+            {
+              filename: `Cierre_Caja_${data.branchName || 'Sucursal'}_${new Date().toISOString().split('T')[0]}.pdf`,
+              content: pdfBuffer.toString('base64')
+            }
+          ]
         })
       });
       if (!res.ok) {
@@ -194,8 +242,127 @@ export class CashRegisterService {
         console.log('Email de cierre enviado a', data.adminEmail);
       }
     } catch (e) {
-      console.error('Error fetching Resend API:', e);
+      console.error('Error fetching Resend API / generating PDF:', e);
     }
+  }
+
+  private generateClosurePDF(data: any): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      try {
+        const doc = new PDFDocument({ margin: 40 });
+        const chunks: Buffer[] = [];
+        
+        doc.on('data', chunk => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', err => reject(err));
+        
+        // --- HEADER BANNER ---
+        doc.rect(0, 0, 612, 12).fill('#166534');
+        
+        doc.moveDown(2);
+        doc.fontSize(22).fillColor('#166534').text('NATURAL OS', { align: 'center' });
+        doc.fontSize(9).fillColor('#6b7280').text('Suite Contable & CRM Wellness-Tech', { align: 'center' });
+        doc.moveDown(1.5);
+        
+        doc.fontSize(13).fillColor('#1f2937').text(`REPORTE OFICIAL DE CIERRE DE CAJA: A/B CONTABLE`, { align: 'center', underline: true });
+        doc.moveDown();
+        
+        // --- METRICS ---
+        doc.fontSize(10).fillColor('#374151');
+        doc.text(`Sucursal:       ${data.branchName || 'Sucursal Principal'}`);
+        doc.text(`Cajero:         ${data.cashierName}`);
+        doc.text(`Fecha/Hora:     ${new Date().toLocaleString()}`);
+        doc.text(`Estatus:        CERRADA`);
+        doc.moveDown();
+        
+        doc.strokeColor('#e5e7eb').lineWidth(1).moveTo(40, doc.y).lineTo(572, doc.y).stroke();
+        doc.moveDown();
+        
+        // --- CORTE A ---
+        doc.fontSize(12).fillColor('#166534').text('CORTE A: VERDAD OPERATIVA (REAL)', { underline: true });
+        doc.fontSize(9).fillColor('#4b5563');
+        doc.text('Detalle completo de todas las operaciones físicas y digitales realizadas en el turno.');
+        doc.moveDown(0.5);
+        
+        const drawRow = (label: string, val: string, isBold = false) => {
+          doc.fontSize(9).fillColor(isBold ? '#111827' : '#374151');
+          doc.text(label, { continued: true });
+          doc.text(val, { align: 'right' });
+        };
+        
+        drawRow('Monto de Apertura (Fondo Fijo):', `$${data.openingAmount.toFixed(2)} MXN`);
+        drawRow('Ventas Totales Realizadas (Bruto):', `$${data.totalSales.toFixed(2)} MXN`);
+        drawRow('Efectivo en Caja Recibido:', `$${data.cutDataAdmin.totalCash.toFixed(2)} MXN`);
+        drawRow('Cobros con Tarjeta (Terminal):', `$${data.cutDataAdmin.totalCard.toFixed(2)} MXN`);
+        drawRow('Cobros por Transferencia (SPEI):', `$${data.cutDataAdmin.totalTransfer.toFixed(2)} MXN`);
+        drawRow('Cobros con Wallet/Puntos:', `$${data.cutDataAdmin.totalWallet.toFixed(2)} MXN`);
+        drawRow('Cobros QR / Digital:', `$${data.cutDataAdmin.totalQR.toFixed(2)} MXN`);
+        drawRow('Descuentos Aplicados:', `-$${data.cutDataAdmin.totalDiscounts.toFixed(2)} MXN`);
+        
+        doc.moveDown(0.3);
+        doc.strokeColor('#e5e7eb').lineWidth(0.5).moveTo(100, doc.y).lineTo(572, doc.y).stroke();
+        doc.moveDown(0.3);
+        
+        drawRow('EFECTIVO ESPERADO EN CAJA:', `$${data.expectedAmount.toFixed(2)} MXN`, true);
+        drawRow('EFECTIVO DECLARADO (FÍSICO):', `$${data.closingAmount.toFixed(2)} MXN`, true);
+        
+        const diffColor = data.difference < 0 ? '#b91c1c' : (data.difference > 0 ? '#15803d' : '#111827');
+        doc.fontSize(10).fillColor(diffColor);
+        doc.text('DIFERENCIA (Físico vs Sistema):', { continued: true });
+        doc.text(`$${data.difference.toFixed(2)} MXN`, { align: 'right', underline: true });
+        doc.moveDown();
+        
+        doc.strokeColor('#e5e7eb').lineWidth(1).moveTo(40, doc.y).lineTo(572, doc.y).stroke();
+        doc.moveDown();
+        
+        // --- CORTE B ---
+        doc.fontSize(12).fillColor('#1e40af').text('CORTE B: VERDAD FISCAL (DECLARABLE BANCARIO)', { underline: true });
+        doc.fontSize(9).fillColor('#4b5563');
+        doc.text('Registro depurado para efectos de auditoría y conciliación fiscal de flujos bancarios directos.');
+        doc.moveDown(0.5);
+        
+        const fiscalSales = data.cutDataFiscal.totalSales;
+        const declaredCash = data.cutDataFiscal.totalCash;
+        const bankSales = data.cutDataFiscal.totalCard + data.cutDataFiscal.totalTransfer + data.cutDataFiscal.totalQR;
+        const cogsFiscal = data.totalCost * (fiscalSales / (data.totalSales || 1));
+        
+        drawRow('Ventas Totales Declarables:', `$${fiscalSales.toFixed(2)} MXN`);
+        drawRow('Cobros en Efectivo Declarados:', `$${declaredCash.toFixed(2)} MXN`);
+        drawRow('Cobros Bancarios Registrados:', `$${bankSales.toFixed(2)} MXN`);
+        drawRow('Costo de Insumos Proporcional (COGS):', `$${cogsFiscal.toFixed(2)} MXN`);
+        drawRow('IVA Estimado Recaudado (IVA Proporcional):', `$${data.cutDataFiscal.taxAmount.toFixed(2)} MXN`);
+        
+        doc.moveDown(0.3);
+        doc.strokeColor('#e5e7eb').lineWidth(0.5).moveTo(100, doc.y).lineTo(572, doc.y).stroke();
+        doc.moveDown(0.3);
+        
+        drawRow('UTILIDAD OPERATIVA FISCAL ESTIMADA:', `$${(fiscalSales - cogsFiscal).toFixed(2)} MXN`, true);
+        doc.moveDown();
+        
+        doc.strokeColor('#e5e7eb').lineWidth(1).moveTo(40, doc.y).lineTo(572, doc.y).stroke();
+        doc.moveDown();
+        
+        // --- NOTES & AUDIT FOOTER ---
+        doc.fontSize(9).fillColor('#374151');
+        doc.text('Notas / Observaciones del Cierre:', { underline: true });
+        doc.fontSize(9).fillColor('#4b5563').font('Helvetica-Oblique');
+        doc.text(data.notes || 'Ninguna observación registrada por el cajero.');
+        doc.font('Helvetica'); // Reset font
+        
+        doc.moveDown(1.5);
+        doc.strokeColor('#9ca3af').lineWidth(0.5).moveTo(206, doc.y).lineTo(406, doc.y).stroke();
+        doc.moveDown(0.2);
+        doc.fontSize(8).fillColor('#6b7280').text('Firma y Autorización del Operador', { align: 'center' });
+        
+        // Footer page marking
+        const pageHeight = doc.page.height;
+        doc.fontSize(8).fillColor('#9ca3af').text('Reporte Oficial Generado Automáticamente por Natural OS. Protegiendo la salud contable del negocio.', 40, pageHeight - 50, { align: 'center' });
+        
+        doc.end();
+      } catch (err) {
+        reject(err);
+      }
+    });
   }
 
   async getHistory(branchId: string) {

@@ -245,7 +245,7 @@ function AdminCategories({ categories, onReload, addToast }: { categories: Categ
 
 // ── PRODUCTS TAB ───────────────────────────────────────────────────────────
 function AdminProducts({ products, categories, onReload, addToast }: { products: Product[], categories: Category[], onReload: () => void, addToast: (msg: string) => void }) {
-  const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '', barcode: '' })
+  const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '', barcode: '', allergens: '' })
   const [submitting, setSubmitting] = useState(false)
   
   // State for label printing
@@ -265,9 +265,10 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
         categoryId: form.categoryId || undefined,
         description: form.description,
         barcode: form.barcode || undefined,
+        allergens: form.allergens || undefined,
       })
       addToast(`🎉 Producto "${form.name}" creado con éxito`)
-      setForm({ name: '', price: '', categoryId: '', description: '', barcode: '' })
+      setForm({ name: '', price: '', categoryId: '', description: '', barcode: '', allergens: '' })
       onReload()
     } catch (e: any) {
       addToast(`❌ Error: ${e.message || 'No se pudo crear producto'}`)
@@ -290,6 +291,7 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
           </select>
           <textarea className="input-dark" placeholder="Descripción" value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
           <input className="input-dark" placeholder="Código de Barras (Opcional)" value={form.barcode} onChange={e=>setForm({...form, barcode: e.target.value})} />
+          <input className="input-dark" placeholder="Alérgenos (ej. Lactosa, Cacahuate)" value={form.allergens} onChange={e=>setForm({...form, allergens: e.target.value})} />
           <button type="submit" disabled={submitting} className="btn-green">Crear Producto</button>
         </form>
       </div>

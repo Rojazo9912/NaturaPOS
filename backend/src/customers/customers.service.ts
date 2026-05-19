@@ -38,6 +38,7 @@ export class CustomersService {
         name: data.name,
         phone: data.phone,
         email: data.email,
+        allergies: data.allergies,
       },
     });
   }
