@@ -1171,12 +1171,46 @@ interface LabelPreviewModalProps {
 function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
   const [labelWidth, setLabelWidth] = useState(50); // in mm
   const [labelHeight, setLabelHeight] = useState(30); // in mm
+  const [isExporting, setIsExporting] = useState(false);
   
   // Autogenerate temporary barcode if not defined
   const barcodeValue = product.barcode || `NAT-${product.id.slice(-6).toUpperCase()}`;
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('label-capture-content');
+    if (!element) return;
+    setIsExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const canvas = await html2canvas(element, {
+        scale: 4, // Ultra high resolution for pristine barcode rendering
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Page size is set precisely to the customized label paper size in mm
+      const pdf = new jsPDF({
+        orientation: labelWidth > labelHeight ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: [labelWidth, labelHeight]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, labelWidth, labelHeight);
+      pdf.save(`etiqueta-${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -1226,18 +1260,45 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
             margin: '0 auto',
             overflow: 'hidden',
           }}>
-            <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
-            <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
-            <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0' }}>${product.price}</div>
-            <div style={{ transform: 'scale(0.85)', transformOrigin: 'center', margin: '2px 0' }}>
-              <Barcode value={barcodeValue} />
+            <div id="label-capture-content" style={{
+              width: '100%',
+              height: '100%',
+              background: 'white',
+              color: 'black',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+              overflow: 'hidden',
+            }}>
+              <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
+              <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
+              <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0' }}>${product.price}</div>
+              <div style={{ transform: 'scale(0.85)', transformOrigin: 'center', margin: '2px 0' }}>
+                <Barcode value={barcodeValue} />
+              </div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={onClose} className="btn-ghost" style={{ flex: 1, padding: '12px' }}>Cancelar</button>
-          <button onClick={handlePrint} className="btn-green" style={{ flex: 2, padding: '12px' }}>🖨️ Imprimir</button>
+        {/* Action guidelines helper card */}
+        <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', padding: '12px', borderRadius: '10px', fontSize: '11px', color: 'var(--c-text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
+          💡 <strong>Tip de Impresión:</strong> Para etiquetas térmicas, en la ventana de impresión pon <strong>Márgenes: Ninguno</strong> y desactiva <strong>Cabeceras/Pies de página</strong> para un ajuste perfecto.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={handlePrint} className="btn-green" style={{ flex: 1, padding: '12px', fontSize: '13px' }}>
+              🖨️ Imprimir
+            </button>
+            <button onClick={handleDownloadPDF} disabled={isExporting} className="btn-ghost" style={{ flex: 1, padding: '12px', fontSize: '13px' }}>
+              {isExporting ? '⏳ Generando...' : '📄 Guardar PDF'}
+            </button>
+          </div>
+          <button onClick={onClose} className="btn-ghost" style={{ width: '100%', padding: '10px', fontSize: '12px', border: 'none', background: 'rgba(255,255,255,0.03)' }}>
+            Cerrar
+          </button>
         </div>
 
         {/* Target print container - absolute positioned off-screen normally, displayed absolute by @media print */}
