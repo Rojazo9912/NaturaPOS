@@ -126,6 +126,7 @@ model Customer {
   points         Float         @default(0)   // Natural Points
   walletBalance  Float         @default(0)   // Wallet interna
   notes          String?
+  allergies      String?       // Lista de alergias separadas por comas (ej. "Lactosa, Cacahuate")
   isActive       Boolean       @default(true)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -205,6 +206,7 @@ model Product {
   isFavorite     Boolean     @default(false)
   barcode        String?     @unique
   sku            String?
+  allergens      String?     // Lista de alérgenos separados por comas (ej. "Lactosa, Cacahuate")
   sortOrder      Int         @default(0)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt

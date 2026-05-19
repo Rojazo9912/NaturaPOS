@@ -19,8 +19,12 @@ export class CashRegisterController {
   }
 
   @Post(':id/close')
-  close(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: { closingAmount: number; notes?: string }) {
-    return this.cashRegisterService.close(id, user.id, dto.closingAmount, dto.notes);
+  close(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: { closingAmount: number; notes?: string; fiscalPercentage?: number }
+  ) {
+    return this.cashRegisterService.close(id, user.id, dto.closingAmount, dto.notes, dto.fiscalPercentage);
   }
 
   @Get('history')

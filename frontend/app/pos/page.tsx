@@ -15,6 +15,7 @@ import {
 } from '@/lib/api'
 import { printTicketWebUSB } from '@/lib/printer'
 import { getSocket } from '@/lib/socket'
+import { useBarcodeScanner, playScanSound } from '@/lib/useBarcodeScanner'
 // ── Types ───────────────────────────────────────────
 interface CartItem extends Product { qty: number }
 
@@ -82,6 +83,7 @@ export default function POSPage() {
   // ── Registro Rápido de Clientes en POS ──
   const [newCustomerName, setNewCustomerName] = useState('')
   const [newCustomerEmail, setNewCustomerEmail] = useState('')
+  const [newCustomerAllergies, setNewCustomerAllergies] = useState('')
   const [creatingCustomer, setCreatingCustomer] = useState(false)
 
   const handleQuickRegisterCustomer = async () => {
@@ -94,12 +96,14 @@ export default function POSPage() {
       const created = await apiCreateCustomer(token, {
         name: newCustomerName,
         phone: phoneQuery,
-        email: newCustomerEmail || undefined
+        email: newCustomerEmail || undefined,
+        allergies: newCustomerAllergies || undefined
       })
       setCustomer(created)
       addToast(`🎉 Cliente ${created.name} registrado con éxito!`)
       setNewCustomerName('')
       setNewCustomerEmail('')
+      setNewCustomerAllergies('')
     } catch (err: any) {
       addToast(`❌ Error: ${err.message || 'No se pudo registrar cliente'}`)
     } finally {
@@ -204,6 +208,39 @@ export default function POSPage() {
   const pointsEarned = Math.floor(finalTotal * 0.10)
   const change      = paymentMethod === 'CASH' && cashGiven ? Math.max(0, Number(cashGiven) - finalTotal) : 0
 
+  // ── CRM Clínico: Detección de Alérgenos Cruzados ──
+  const getActiveAllergenWarnings = useCallback(() => {
+    if (!customer || !customer.allergies || cart.length === 0) return []
+    
+    const customerAllergiesSet = new Set(
+      customer.allergies
+        .toLowerCase()
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+    )
+
+    const warnings: Array<{ productName: string; allergen: string }> = []
+
+    cart.forEach(item => {
+      if (item.allergens) {
+        const itemAllergens = item.allergens
+          .toLowerCase()
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)
+
+        itemAllergens.forEach(allergen => {
+          if (customerAllergiesSet.has(allergen)) {
+            warnings.push({ productName: item.name, allergen })
+          }
+        })
+      }
+    })
+
+    return warnings
+  }, [customer, cart])
+
   // ── IA Predictiva: Algoritmo de Sugerencia de Venta (Upselling) ──
   const upsellRecommendations = (() => {
     if (cart.length === 0 || products.length === 0) return []
@@ -232,8 +269,19 @@ export default function POSPage() {
     
     if (!activeRegister) {
       setPayError('❌ Debes ABRIR LA CAJA antes de poder realizar ventas.')
-      setPaying(false)
       return
+    }
+
+    if (paymentMethod === 'WALLET') {
+      if (!customer) {
+        setPayError('❌ Debes seleccionar un cliente registrado para pagar con Wallet/Monedero.')
+        return
+      }
+      if ((customer.walletBalance || 0) < finalTotal) {
+        const deficit = finalTotal - (customer.walletBalance || 0)
+        setPayError(`❌ Saldo insuficiente en Wallet. Saldo actual: $${(customer.walletBalance || 0).toFixed(2)} MXN (Faltan $${deficit.toFixed(2)} MXN).`)
+        return
+      }
     }
 
     setPaying(true)
@@ -318,7 +366,7 @@ export default function POSPage() {
       p.barcode === search)
   )
 
-  // Autodetect Barcode Scan
+  // Autodetect Barcode Scan (Foco en buscador)
   useEffect(() => {
     if (search.length >= 8) {
       const prod = products.find(p => p.barcode === search)
@@ -328,10 +376,24 @@ export default function POSPage() {
           if (exists) return prev.map(i => i.id === prod.id ? { ...i, qty: i.qty + 1 } : i)
           return [...prev, { ...prod, qty: 1 }]
         })
+        playScanSound()
+        addToast(`🏷️ Producto escaneado: ${prod.name}`)
         setSearch('')
       }
     }
   }, [search, products])
+
+  // Escaneo Láser Físico Global (Omnipresente, sin foco requerido)
+  useBarcodeScanner(useCallback((barcode) => {
+    const prod = products.find(p => p.barcode === barcode || p.sku === barcode)
+    if (prod) {
+      addToCart(prod)
+      playScanSound()
+      addToast(`🏷️ Producto escaneado: ${prod.name}`)
+    } else {
+      addToast(`⚠️ Código de barras "${barcode}" no registrado en el sistema.`)
+    }
+  }, [products, addToCart]))
 
   const handleOpenSubModal = async () => {
     const token = getToken()
@@ -533,20 +595,156 @@ export default function POSPage() {
             )}
             {!customerLoading && customer && (
               <>
-                <div className="mt-3 p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 flex justify-between items-center animate-fadeIn">
-                  <div>
-                    <div className="text-sm font-bold text-white">{customer.name}</div>
-                    <div className="text-[11px] text-zinc-400">
-                      ⭐ {customer.points.toFixed(0)} pts · {customer.totalVisits} visitas
+                {(() => {
+                  const spent = customer.totalSpent || 0;
+                  const lvl = (customer.level || 'VERDE').toUpperCase();
+                  let tierName = 'VERDE';
+                  let nextTier = 'GOLD';
+                  let target = 1000;
+                  let gradient = 'from-green-500 to-emerald-400';
+                  let glowColor = 'rgba(34,197,94,0.4)';
+                  let badgeClass = 'bg-green-500/10 text-green-400 border border-green-500/30';
+                  
+                  if (lvl === 'GOLD') {
+                    tierName = 'GOLD';
+                    nextTier = 'ELITE';
+                    target = 3000;
+                    gradient = 'from-amber-500 to-orange-400';
+                    glowColor = 'rgba(245,158,11,0.4)';
+                    badgeClass = 'bg-amber-500/10 text-amber-400 border border-amber-500/30';
+                  } else if (lvl === 'ELITE') {
+                    tierName = 'ELITE';
+                    nextTier = 'LEGEND';
+                    target = 7000;
+                    gradient = 'from-violet-600 to-purple-400';
+                    glowColor = 'rgba(139,92,246,0.4)';
+                    badgeClass = 'bg-violet-500/10 text-violet-400 border border-violet-500/30';
+                  } else if (lvl === 'LEGEND') {
+                    tierName = 'LEGEND';
+                    nextTier = '';
+                    target = 0;
+                    gradient = 'from-pink-500 to-rose-400';
+                    glowColor = 'rgba(236,72,153,0.4)';
+                    badgeClass = 'bg-pink-500/10 text-pink-400 border border-pink-500/30';
+                  }
+
+                  const progress = target > 0 ? Math.min(100, Math.floor((spent / target) * 100)) : 100;
+                  const remaining = target > spent ? (target - spent) : 0;
+
+                  return (
+                    <div className="mt-3 p-4 rounded-2xl bg-zinc-950/40 border border-zinc-800/80 backdrop-blur-md animate-fadeIn shadow-lg shadow-black/40 space-y-4">
+                      {/* Cabecera del Cliente */}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-sm font-black text-white leading-tight">{customer.name}</div>
+                          <div className="text-[10px] text-zinc-500 mt-0.5">
+                            {customer.phone.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3')}
+                          </div>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${badgeClass} animate-pulse`}>
+                          👑 {tierName}
+                        </span>
+                      </div>
+
+                      {/* Monedero Digital / Wallet */}
+                      <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex justify-between items-center transition-all duration-300 hover:border-green-500/30 hover:bg-zinc-900/80 group">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-lg border border-green-500/20 group-hover:scale-105 group-hover:bg-green-500/20 transition-all">
+                            👛
+                          </div>
+                          <div>
+                            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Saldo Wallet</div>
+                            <div className="text-sm font-black text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                              ${(customer.walletBalance || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[9px] text-zinc-500">Puntos Naturales</div>
+                          <div className="text-xs font-bold text-white">⭐ {customer.points.toFixed(0)} pts</div>
+                        </div>
+                      </div>
+
+                      {/* Gamificación y Progreso */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-zinc-400 font-bold">Progreso de Nivel</span>
+                          <span className="text-zinc-500 font-mono">
+                            ${spent.toFixed(0)} {target > 0 ? `/ $${target}` : ''}
+                          </span>
+                        </div>
+                        
+                        {/* Apple-style Progress Bar */}
+                        <div className="relative h-2 w-full rounded-full bg-zinc-800/80 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-1000 ease-out`}
+                            style={{
+                              width: `${progress}%`,
+                              boxShadow: `0 0 8px ${glowColor}`
+                            }}
+                          />
+                        </div>
+
+                        {/* Texto de Nivel Siguiente */}
+                        {target > 0 ? (
+                          <div className="text-[9px] text-zinc-400 leading-tight">
+                            Te faltan <span className="text-amber-400 font-black">${remaining.toLocaleString('es-MX')} MXN</span> de consumo acumulado para ascender a <span className="text-white font-bold">{nextTier}</span>.
+                          </div>
+                        ) : (
+                          <div className="text-[9px] text-pink-400 font-black leading-tight flex items-center gap-1">
+                            <span>✨</span> ¡Felicidades! Has alcanzado el nivel máximo LEGEND.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Visitas & Estadísticas Rápidas */}
+                      <div className="flex justify-between items-center text-[9px] text-zinc-500 border-t border-zinc-900 pt-3">
+                        <div>
+                          Visitas totales: <span className="text-zinc-300 font-bold">{customer.totalVisits}</span>
+                        </div>
+                        <div>
+                          Gasto histórico: <span className="text-zinc-300 font-bold">${spent.toLocaleString('es-MX')}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black bg-zinc-800 text-zinc-300`}>
-                    {customer.level}
-                  </span>
-                </div>
+                  )
+                })()}
+
                 <button onClick={handleOpenSubModal} className="btn-ghost w-full mt-2 py-1.5 text-[10px] text-green-500 border-green-500/30">
                   ⭐ Gestionar Suscripción (Plan Recovery)
                 </button>
+
+                {/* Visualización de Alergias Registradas */}
+                {customer.allergies && (
+                  <div className="mt-2 text-[10px] font-semibold text-zinc-400 flex flex-wrap gap-1 items-center">
+                    <span>⚠️ Alergias:</span>
+                    {customer.allergies.split(',').map((alg, i) => (
+                      <span key={i} className="px-1.5 py-0.5 rounded bg-red-950/40 border border-red-900 text-red-400 font-bold uppercase text-[9px]">
+                        {alg.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Banner de Conflictos de Alérgenos */}
+                {getActiveAllergenWarnings().length > 0 && (
+                  <div className="mt-3 p-3 rounded-xl bg-red-950/20 border border-red-500/40 space-y-2 animate-pulse shadow-lg shadow-red-950/20">
+                    <div className="flex items-center gap-2 text-red-400 text-xs font-black uppercase tracking-wider">
+                      <span>🚨</span>
+                      <span>Conflicto de Alérgenos</span>
+                    </div>
+                    <div className="space-y-1">
+                      {getActiveAllergenWarnings().map((w, idx) => (
+                        <div key={idx} className="text-[11px] text-red-200 leading-tight">
+                          • <strong className="text-white">{w.productName}</strong> contiene <span className="underline font-black text-red-300 uppercase">{w.allergen}</span>.
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[9px] text-zinc-500 font-bold leading-normal pt-1 border-t border-red-950">
+                      * Por favor, alerta al personal de preparación para evitar contaminación cruzada.
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -567,6 +765,12 @@ export default function POSPage() {
                     className="input-dark w-full p-2 text-xs"
                     type="email"
                   />
+                  <input
+                    value={newCustomerAllergies}
+                    onChange={e => setNewCustomerAllergies(e.target.value)}
+                    placeholder="Alergias (ej. Lactosa, Cacahuate)..."
+                    className="input-dark w-full p-2 text-xs"
+                  />
                   <button
                     onClick={handleQuickRegisterCustomer}
                     className="btn-green w-full py-1.5 text-xs font-bold"
@@ -586,22 +790,44 @@ export default function POSPage() {
                 <div className="text-4xl mb-3 opacity-20">🛒</div>
                 <div className="text-sm">El carrito está vacío</div>
               </div>
-            ) : (cart || []).map(item => (
-              <div key={item.id} className="flex gap-3 items-center group">
-                <div className="w-10 h-10 rounded-lg bg-zinc-900 flex items-center justify-center text-xl shrink-0 group-hover:bg-zinc-800 transition-colors">
-                  {item.category?.emoji ?? '📦'}
+            ) : (cart || []).map(item => {
+              const itemAllergensList = item.allergens ? item.allergens.toLowerCase().split(',').map(s => s.trim()).filter(Boolean) : []
+              const customerAllergiesList = customer?.allergies ? customer.allergies.toLowerCase().split(',').map(s => s.trim()).filter(Boolean) : []
+              const conflictingAllergen = itemAllergensList.find(alg => customerAllergiesList.includes(alg))
+
+              return (
+                <div 
+                  key={item.id} 
+                  className={`flex gap-3 items-center group p-1.5 rounded-lg border transition-all ${
+                    conflictingAllergen 
+                      ? 'bg-red-950/20 border-red-500/30 shadow-md shadow-red-950/20' 
+                      : 'border-transparent'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0 group-hover:bg-zinc-800 transition-colors ${
+                    conflictingAllergen ? 'bg-red-950 border border-red-900 text-red-500' : 'bg-zinc-900'
+                  }`}>
+                    {item.category?.emoji ?? '📦'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white truncate">{item.name}</div>
+                    <div className="text-xs text-zinc-500">
+                      {fmt(item.price)} c/u
+                      {conflictingAllergen && (
+                        <span className="block text-[10px] text-red-400 font-extrabold uppercase mt-0.5 animate-pulse">
+                          ⚠️ Contiene: {conflictingAllergen}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">-</button>
+                    <span className="text-sm font-bold w-4 text-center text-white">{item.qty}</span>
+                    <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">+</button>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-white truncate">{item.name}</div>
-                  <div className="text-xs text-zinc-500">{fmt(item.price)} c/u</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">-</button>
-                  <span className="text-sm font-bold w-4 text-center text-white">{item.qty}</span>
-                  <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">+</button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* IA Predictiva: Upselling Panel */}

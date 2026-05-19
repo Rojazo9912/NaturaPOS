@@ -22,6 +22,8 @@ export interface Product {
   isFavorite: boolean
   description: string | null
   barcode: string | null
+  allergens: string | null
+  sku?: string | null
 }
 
 export interface Category {
@@ -40,6 +42,8 @@ export interface Customer {
   points: number
   totalVisits: number
   totalSpent: number
+  allergies: string | null
+  walletBalance: number
 }
 
 export interface DashboardSummary {
@@ -129,7 +133,7 @@ export async function apiSearchCustomers(token: string, phone: string): Promise<
   return res.json()
 }
 
-export async function apiCreateCustomer(token: string, data: { name: string; phone: string; email?: string }): Promise<Customer> {
+export async function apiCreateCustomer(token: string, data: { name: string; phone: string; email?: string; allergies?: string }): Promise<Customer> {
   const res = await fetch(`${API}/api/v1/customers`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -270,11 +274,11 @@ export async function apiOpenRegister(token: string, openingAmount: number): Pro
   return res.json()
 }
 
-export async function apiCloseRegister(token: string, id: string, closingAmount: number, notes?: string) {
+export async function apiCloseRegister(token: string, id: string, closingAmount: number, notes?: string, fiscalPercentage?: number) {
   const res = await fetch(`${API}/api/v1/cash-register/${id}/close`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ closingAmount, notes }),
+    body: JSON.stringify({ closingAmount, notes, fiscalPercentage }),
   })
   if (!res.ok) throw new Error('Error al cerrar caja')
   return res.json()
