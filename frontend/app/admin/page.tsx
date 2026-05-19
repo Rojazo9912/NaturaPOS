@@ -182,6 +182,36 @@ export default function AdminPage() {
 function AdminCategories({ categories, onReload, addToast }: { categories: Category[], onReload: () => void, addToast: (msg: string) => void }) {
   const [form, setForm] = useState({ name: '', emoji: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
+  const [activeCategory, setActiveCategory] = useState(0)
+
+  const EMOJI_CATEGORIES = [
+    {
+      name: 'Salud y Fitness',
+      icon: '💪',
+      emojis: ['💪', '🧘', '🥦', '🥑', '🍌', '🥬', '🥗', '🍎', '🍋', '🍓', '🥥', '🥚', '🌾', '🌱', '🌿', '🍃', '🍵', '⚡']
+    },
+    {
+      name: 'Comida',
+      icon: '🥪',
+      emojis: ['🥪', '🌯', '🌮', '🍔', '🍕', '🍟', '🍳', '🍗', '🥩', '🐟', '🍣', '🍜', '🍚', '🥞', '🥐', '🍞', '🧀', '🍄']
+    },
+    {
+      name: 'Bebidas y Postres',
+      icon: '🥤',
+      emojis: ['🥤', '☕', '🧉', '🍹', '🍷', '🍺', '🥛', '🍦', '🍰', '🍪', '🍩', '🍫', '🍬', '🍯']
+    },
+    {
+      name: 'Frutas y Vegetales',
+      icon: '🍎',
+      emojis: ['🍇', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍒', '🍓', '🥝', '🍅', '🥑', '🍆', '🥕', '🌽', '🌶️']
+    },
+    {
+      name: 'Otros y General',
+      icon: '🏷️',
+      emojis: ['📦', '🏷️', '⭐', '🔥', '❤️', '🎉', '🌟', '🛒', '💰', '💼', '👥', '📅', '✨', '🍀']
+    }
+  ]
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
@@ -191,6 +221,7 @@ function AdminCategories({ categories, onReload, addToast }: { categories: Categ
     try {
       await apiCreateCategory(token, { name: form.name, emoji: form.emoji || undefined })
       setForm({ name: '', emoji: '' })
+      setShowPicker(false)
       addToast('🎉 Categoría creada exitosamente')
       onReload()
     } catch (err: any) {
@@ -202,11 +233,130 @@ function AdminCategories({ categories, onReload, addToast }: { categories: Categ
 
   return (
     <div className="admin-grid">
-      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)', height: 'fit-content' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '20px' }}>Nueva Categoría</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <input required placeholder="Nombre (ej. Proteínas)" className="input-dark" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <input placeholder="Emoji (ej. 💪)" className="input-dark" value={form.emoji} onChange={e => setForm({ ...form, emoji: e.target.value })} maxLength={4} />
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ position: 'relative' }}>
+              <input 
+                placeholder="Emoji (ej. 💪)" 
+                className="input-dark" 
+                value={form.emoji} 
+                onChange={e => setForm({ ...form, emoji: e.target.value })} 
+                maxLength={4} 
+                style={{ width: '100%', paddingRight: '40px' }}
+                onClick={() => setShowPicker(true)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPicker(!showPicker)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  opacity: showPicker ? 1 : 0.6,
+                  transition: 'opacity var(--t-fast)'
+                }}
+                title="Seleccionar emoji"
+              >
+                😀
+              </button>
+            </div>
+
+            {showPicker && (
+              <div style={{
+                background: 'var(--c-surface-2)',
+                border: '1px solid var(--c-border)',
+                borderRadius: '12px',
+                padding: '12px',
+                animation: 'fadeIn var(--t-fast) forwards',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                marginTop: '4px'
+              }}>
+                {/* Category tabs */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid var(--c-border)',
+                  paddingBottom: '8px',
+                }}>
+                  {EMOJI_CATEGORIES.map((cat, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveCategory(idx)}
+                      title={cat.name}
+                      className="emoji-tab-btn"
+                      style={{
+                        background: activeCategory === idx ? 'var(--c-green-glow)' : 'transparent',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '16px',
+                        width: '28px',
+                        height: '28px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: activeCategory === idx ? 'var(--c-green)' : 'var(--c-text-muted)',
+                        transition: 'all var(--t-fast)',
+                        borderBottom: activeCategory === idx ? '2px solid var(--c-green)' : 'none',
+                      }}
+                    >
+                      {cat.icon}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Emojis Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(6, 1fr)',
+                  gap: '6px',
+                  maxHeight: '120px',
+                  overflowY: 'auto',
+                  paddingRight: '2px'
+                }}>
+                  {EMOJI_CATEGORIES[activeCategory].emojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, emoji })
+                      }}
+                      className="emoji-item-btn"
+                      style={{
+                        background: form.emoji === emoji ? 'var(--c-green)' : 'transparent',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '20px',
+                        height: '36px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all var(--t-fast)',
+                        transform: form.emoji === emoji ? 'scale(1.1)' : 'scale(1)',
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button type="submit" disabled={submitting} className="btn-green">
             {submitting ? 'Creando...' : '+ Crear Categoría'}
           </button>
