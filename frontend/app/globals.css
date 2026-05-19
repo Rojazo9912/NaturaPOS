@@ -292,6 +292,22 @@ html, body {
   background: rgba(0,0,0,0.9);
 }
 
+/* ── Custom Emoji Picker ── */
+.emoji-tab-btn {
+  transition: all var(--t-fast) !important;
+}
+.emoji-tab-btn:hover {
+  background: var(--c-surface-3) !important;
+  color: var(--c-green) !important;
+}
+.emoji-item-btn {
+  transition: all var(--t-fast) !important;
+}
+.emoji-item-btn:hover {
+  background: var(--c-surface-3) !important;
+  transform: scale(1.2) !important;
+}
+
 /* 🖨️ PRINT STYLES */
 @media print {
   body * {
