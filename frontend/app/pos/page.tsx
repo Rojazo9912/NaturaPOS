@@ -1205,7 +1205,7 @@ export default function POSPage() {
               </tr>
             </thead>
             <tbody>
-              {lastOrder.items.map((item: any, idx: number) => (
+              {lastOrder.items?.map((item: any, idx: number) => (
                 <tr key={idx}>
                   <td>{item.quantity}</td>
                   <td>{item.product?.name}</td>
@@ -1225,7 +1225,7 @@ export default function POSPage() {
 
           <div style={{ marginTop: '10px' }}>
             <p style={{ margin: '0', fontWeight: 'bold' }}>Pagos:</p>
-            {lastOrder.payments.map((p: any, idx: number) => (
+            {lastOrder.payments?.map((p: any, idx: number) => (
               <p key={idx} style={{ margin: '0', fontSize: '10px' }}>• {p.method}: {fmt(p.amount)}</p>
             ))}
           </div>
