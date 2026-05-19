@@ -1245,24 +1245,19 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
           <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 700 }}>VISTA PREVIA REAL</div>
           
           <div style={{
-            width: `${labelWidth}mm`,
-            height: `${labelHeight}mm`,
+            width: 'fit-content',
+            height: 'fit-content',
             background: 'white',
-            color: 'black',
-            padding: '8px',
             borderRadius: '4px',
             border: '2px dashed var(--c-green)',
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
             boxSizing: 'border-box',
             margin: '0 auto',
             overflow: 'hidden',
           }}>
             <div id="label-capture-content" style={{
-              width: '100%',
-              height: '100%',
+              width: `${labelWidth}mm`,
+              height: `${labelHeight}mm`,
               background: 'white',
               color: 'black',
               display: 'flex',
@@ -1271,6 +1266,7 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
               justifyContent: 'center',
               boxSizing: 'border-box',
               overflow: 'hidden',
+              padding: '8px',
             }}>
               <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
               <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
