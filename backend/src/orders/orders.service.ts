@@ -73,6 +73,15 @@ export class OrdersService {
             })) || [],
           },
         },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+          payments: true,
+          customer: true,
+        },
       });
 
       // ── Motor de Lealtad (Natural Points & Niveles) ──
