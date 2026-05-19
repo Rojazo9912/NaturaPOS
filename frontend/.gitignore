@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+coverage/
 
 # next.js
 /.next/
@@ -19,18 +20,23 @@
 
 # production
 /build
+dist/
+dist_test/
 
 # misc
 .DS_Store
 *.pem
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+.env
+.env.local
 .env*
 
 # vercel

@@ -3,6 +3,8 @@ node_modules/
 
 # Build
 dist/
+dist_test/
+coverage/
 
 # TypeScript incremental cache (bloquea builds en Docker)
 *.tsbuildinfo
