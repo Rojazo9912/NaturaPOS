@@ -246,6 +246,10 @@ function AdminCategories({ categories, onReload, addToast }: { categories: Categ
 function AdminProducts({ products, categories, onReload, addToast }: { products: Product[], categories: Category[], onReload: () => void, addToast: (msg: string) => void }) {
   const [form, setForm] = useState({ name: '', price: '', categoryId: '', description: '', barcode: '' })
   const [submitting, setSubmitting] = useState(false)
+  
+  // State for label printing
+  const [selectedProductForLabel, setSelectedProductForLabel] = useState<Product | null>(null)
+  const [showLabelModal, setShowLabelModal] = useState(false)
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
@@ -296,6 +300,7 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
               <th style={{ padding: '16px', fontSize: '13px' }}>Precio</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Código</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Estado</th>
+              <th style={{ padding: '16px', fontSize: '13px' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -330,11 +335,36 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
                     {p.isActive ? '● Activo' : '● Inactivo'}
                   </button>
                 </td>
+                <td style={{ padding: '16px' }}>
+                  <button
+                    onClick={() => {
+                      setSelectedProductForLabel(p)
+                      setShowLabelModal(true)
+                    }}
+                    className="btn-ghost"
+                    style={{
+                      padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                      cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    🏷️ Etiqueta
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {showLabelModal && selectedProductForLabel && (
+        <LabelPreviewModal
+          product={selectedProductForLabel}
+          onClose={() => {
+            setShowLabelModal(false)
+            setSelectedProductForLabel(null)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1074,4 +1104,166 @@ function AdminUsers({ addToast }: { addToast: (msg: string) => void }) {
       </div>
     </div>
   )
+}
+
+// ── BARCODE LABEL PRINTING AUXILIARIES ──────────────────────────────────────
+const CODE39_MAP: Record<string, string> = {
+  '0': '101001101101', '1': '110100101011', '2': '101100101011', '3': '110110010101',
+  '4': '101001101011', '5': '110100110101', '6': '101100110101', '7': '101001011011',
+  '8': '110100101101', '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
+  'C': '110110100101', 'D': '101011001011', 'E': '110101100101', 'F': '101101100101',
+  'G': '101010011011', 'H': '110101001101', 'I': '101101001101', 'J': '101011001101',
+  'K': '110101010011', 'L': '101101010011', 'M': '110110101001', 'N': '101011010011',
+  'O': '110101101001', 'P': '101101101001', 'Q': '101010110011', 'R': '110101011001',
+  'S': '101101011001', 'T': '101011011001', 'U': '110010101011', 'V': '100110101011',
+  'W': '110011010101', 'X': '100101101011', 'Y': '110010110101', 'Z': '100110110101',
+  '-': '100101011011', '.': '110010101101', ' ': '100110101101', '*': '100101101101',
+  '$': '100100100101', '/': '100100101001', '+': '100101001001', '%': '101001001001'
+};
+
+function Barcode({ value }: { value: string }) {
+  const cleanVal = value.toUpperCase().replace(/[^0-9A-Z\-\.\s\$\/\+\%]/g, '');
+  const padded = `*${cleanVal}*`;
+  let bitString = '';
+  for (let i = 0; i < padded.length; i++) {
+    const char = padded[i];
+    bitString += (CODE39_MAP[char] || CODE39_MAP['*']) + '0';
+  }
+
+  const rects = [];
+  const barWidth = 1.5; // narrow unit width
+  const height = 45; // bar height
+  
+  for (let i = 0; i < bitString.length; i++) {
+    if (bitString[i] === '1') {
+      rects.push(
+        <rect
+          key={i}
+          x={i * barWidth}
+          y={0}
+          width={barWidth}
+          height={height}
+          fill="black"
+        />
+      );
+    }
+  }
+
+  const svgWidth = bitString.length * barWidth;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg width={svgWidth} height={height}>
+        {rects}
+      </svg>
+      <div style={{ fontSize: '10px', fontFamily: 'monospace', letterSpacing: '3px', marginTop: '2px', color: 'black' }}>
+        {cleanVal}
+      </div>
+    </div>
+  );
+}
+
+interface LabelPreviewModalProps {
+  product: Product;
+  onClose: () => void;
+}
+
+function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
+  const [labelWidth, setLabelWidth] = useState(50); // in mm
+  const [labelHeight, setLabelHeight] = useState(30); // in mm
+  
+  // Autogenerate temporary barcode if not defined
+  const barcodeValue = product.barcode || `NAT-${product.id.slice(-6).toUpperCase()}`;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 10000 }}>
+      <div className="modal-content" style={{ maxWidth: '420px', background: 'var(--c-surface-1)', color: 'var(--c-text)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Imprimir Etiqueta de Producto</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--c-text-muted)', cursor: 'pointer', fontSize: '24px' }}>&times;</button>
+        </div>
+        
+        {/* Sliders for Width/Height Auto-adjustment */}
+        <div style={{ background: 'var(--c-surface-2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--c-border)', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📏 Dimensiones de la Etiqueta (Autoajustable)</div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span>Ancho del Papel:</span>
+              <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{labelWidth} mm</span>
+            </div>
+            <input type="range" min="30" max="80" value={labelWidth} onChange={e => setLabelWidth(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--c-green)' }} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+              <span>Alto del Papel:</span>
+              <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{labelHeight} mm</span>
+            </div>
+            <input type="range" min="20" max="60" value={labelHeight} onChange={e => setLabelHeight(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--c-green)' }} />
+          </div>
+        </div>
+
+        {/* Scaled Preview Box */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 700 }}>VISTA PREVIA REAL</div>
+          
+          <div style={{
+            width: `${labelWidth}mm`,
+            height: `${labelHeight}mm`,
+            background: 'white',
+            color: 'black',
+            padding: '8px',
+            borderRadius: '4px',
+            border: '2px dashed var(--c-green)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxSizing: 'border-box',
+            margin: '0 auto',
+            overflow: 'hidden',
+          }}>
+            <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
+            <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
+            <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0' }}>${product.price}</div>
+            <div style={{ transform: 'scale(0.85)', transformOrigin: 'center', margin: '2px 0' }}>
+              <Barcode value={barcodeValue} />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={onClose} className="btn-ghost" style={{ flex: 1, padding: '12px' }}>Cancelar</button>
+          <button onClick={handlePrint} className="btn-green" style={{ flex: 2, padding: '12px' }}>🖨️ Imprimir</button>
+        </div>
+
+        {/* Target print container - absolute positioned off-screen normally, displayed absolute by @media print */}
+        <div id="printable-label" style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: '-9999px',
+          width: `${labelWidth}mm`,
+          height: `${labelHeight}mm`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'white',
+          color: 'black',
+          padding: '6px',
+          boxSizing: 'border-box',
+        }}>
+          <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px' }}>Natural by Nutrit</div>
+          <div style={{ fontSize: '11px', fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', lineHeight: '1.2' }}>{product.name}</div>
+          <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0' }}>${product.price}</div>
+          <div style={{ transform: 'scale(0.85)', transformOrigin: 'center', margin: '2px 0' }}>
+            <Barcode value={barcodeValue} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
