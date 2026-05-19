@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import QRCode from 'qrcode'
 import { useRouter } from 'next/navigation'
 import {
   getToken, getUser,
@@ -249,6 +250,7 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
   
   // State for label printing
   const [selectedProductForLabel, setSelectedProductForLabel] = useState<Product | null>(null)
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [showLabelModal, setShowLabelModal] = useState(false)
 
   const handleSubmit = async (e: any) => {
@@ -295,6 +297,20 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
         <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
           <thead style={{ background: 'var(--c-surface-2)' }}>
             <tr>
+              <th style={{ padding: '16px', width: '40px' }}>
+                <input 
+                  type="checkbox"
+                  checked={products.length > 0 && selectedProductIds.length === products.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedProductIds(products.map(p => p.id))
+                    } else {
+                      setSelectedProductIds([])
+                    }
+                  }}
+                  style={{ accentColor: 'var(--c-green)', cursor: 'pointer' }}
+                />
+              </th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Nombre</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Categoría</th>
               <th style={{ padding: '16px', fontSize: '13px' }}>Precio</th>
@@ -306,6 +322,20 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
           <tbody>
             {products.map(p => (
               <tr key={p.id} style={{ borderBottom: '1px solid var(--c-border)', opacity: p.isActive ? 1 : 0.5 }}>
+                <td style={{ padding: '16px', width: '40px' }}>
+                  <input 
+                    type="checkbox"
+                    checked={selectedProductIds.includes(p.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedProductIds([...selectedProductIds, p.id])
+                      } else {
+                        setSelectedProductIds(selectedProductIds.filter(id => id !== p.id))
+                      }
+                    }}
+                    style={{ accentColor: 'var(--c-green)', cursor: 'pointer' }}
+                  />
+                </td>
                 <td style={{ padding: '16px', fontWeight: 600 }}>{p.name}</td>
                 <td style={{ padding: '16px', color: 'var(--c-text-muted)' }}>
                   {p.category?.emoji} {p.category?.name || '—'}
@@ -356,12 +386,61 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
         </table>
       </div>
 
-      {showLabelModal && selectedProductForLabel && (
+      {selectedProductIds.length > 0 && (
+        <div 
+          className="animate-slideUp"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            padding: '12px 24px',
+            borderRadius: '100px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '24px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(34, 197, 94, 0.15)',
+            zIndex: 9999,
+          }}
+        >
+          <span style={{ fontSize: '13px', color: 'var(--c-text)', fontWeight: 600 }}>
+            📦 Seleccionados: <strong style={{ color: 'var(--c-green)', fontSize: '14px' }}>{selectedProductIds.length}</strong> {selectedProductIds.length === 1 ? 'producto' : 'productos'}
+          </span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={() => {
+                setSelectedProductForLabel(null)
+                setShowLabelModal(true)
+              }}
+              className="btn-green" 
+              style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '50px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              🏷️ Imprimir Etiquetas
+            </button>
+            <button 
+              onClick={() => setSelectedProductIds([])}
+              className="btn-ghost" 
+              style={{ padding: '8px 16px', fontSize: '12px', borderRadius: '50px', border: 'none', background: 'rgba(255,255,255,0.05)' }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showLabelModal && (selectedProductForLabel || selectedProductIds.length > 0) && (
         <LabelPreviewModal
-          product={selectedProductForLabel}
+          products={
+            selectedProductForLabel 
+              ? [selectedProductForLabel] 
+              : products.filter(p => selectedProductIds.includes(p.id))
+          }
           onClose={() => {
             setShowLabelModal(false)
             setSelectedProductForLabel(null)
+            setSelectedProductIds([])
           }}
         />
       )}
@@ -1160,61 +1239,161 @@ function Barcode({ value, barWidth = 1.2, height = 35 }: { value: string; barWid
   );
 }
 
+function QRCodeComponent({ value, size = 60 }: { value: string; size?: number }) {
+  const [qrUrl, setQrUrl] = useState<string>('');
+
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL(value, {
+      width: size * 3, // Premium sharp details
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+      .then(url => {
+        if (active) setQrUrl(url);
+      })
+      .catch(err => {
+        console.error('QR code generation error:', err);
+      });
+    return () => {
+      active = false;
+    };
+  }, [value, size]);
+
+  if (!qrUrl) {
+    return <div style={{ width: size, height: size, background: '#f3f4f6', borderRadius: '4px' }} />;
+  }
+
+  return (
+    <img 
+      src={qrUrl} 
+      alt="QR Code" 
+      style={{ width: size, height: size, display: 'block', imageRendering: 'pixelated' }} 
+    />
+  );
+}
+
 interface LabelPreviewModalProps {
-  product: Product;
+  products: Product[];
   onClose: () => void;
 }
 
-function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
+function LabelPreviewModal({ products, onClose }: LabelPreviewModalProps) {
   const [labelWidth, setLabelWidth] = useState(50); // in mm
   const [labelHeight, setLabelHeight] = useState(30); // in mm
   const [isExporting, setIsExporting] = useState(false);
   
-  // Autogenerate temporary barcode if not defined
-  const barcodeValue = product.barcode || `NAT-${product.id.slice(-6).toUpperCase()}`;
+  // Interactive control states
+  const [quantities, setQuantities] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    products.forEach(p => {
+      initial[p.id] = 1;
+    });
+    return initial;
+  });
+  
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [preset, setPreset] = useState<'50x30' | '60x40' | '30x20' | '80x50' | 'custom'>('50x30');
+  const [template, setTemplate] = useState<'completo' | 'compacto' | 'horizontal'>('completo');
+  const [useQR, setUseQR] = useState(false);
 
-  // Dynamically calculate optimal bar width and height to fit the label paper size perfectly without CSS transforms
+  // Fallback barcode generation helper
+  const getBarcodeValue = (p: Product) => p.barcode || `NAT-${p.id.slice(-6).toUpperCase()}`;
+
+  // Handle standard sized rolls automatically
+  const handlePresetChange = (val: string) => {
+    setPreset(val as any);
+    if (val === '50x30') {
+      setLabelWidth(50);
+      setLabelHeight(30);
+    } else if (val === '60x40') {
+      setLabelWidth(60);
+      setLabelHeight(40);
+    } else if (val === '30x20') {
+      setLabelWidth(30);
+      setLabelHeight(20);
+    } else if (val === '80x50') {
+      setLabelWidth(80);
+      setLabelHeight(50);
+    }
+  };
+
+  const activeProduct = products[currentIndex] || products[0];
+  const barcodeValue = getBarcodeValue(activeProduct);
+
+  // Dynamic vector calculations
   const cleanValForBar = barcodeValue.toUpperCase().replace(/[^0-9A-Z\-\.\s\$\/\+\%]/g, '');
   const bitStringLength = (cleanValForBar.length + 2) * 13;
-  const labelWidthPx = labelWidth * 3.78; // 1mm = 3.78px
+  const labelWidthPx = labelWidth * 3.78;
   const labelHeightPx = labelHeight * 3.78;
   
-  // Available width leaves a 10px margin on each side (total 20px)
   const optimalBarWidth = Math.max(0.7, Math.min(1.5, (labelWidthPx - 20) / bitStringLength));
   
-  // Available height leaves about 72px for branding, product name, price, margins
-  const optimalBarHeight = Math.max(18, Math.min(40, labelHeightPx - 72));
+  const optimalBarHeight = template === 'completo'
+    ? Math.max(18, Math.min(40, labelHeightPx - 72))
+    : template === 'compacto'
+      ? Math.max(24, Math.min(55, labelHeightPx - 40))
+      : Math.max(18, Math.min(40, labelHeightPx - 26));
+
+  const optimalQRSize = template === 'completo'
+    ? Math.max(30, Math.min(80, labelHeightPx - 68))
+    : template === 'compacto'
+      ? Math.max(35, Math.min(100, labelHeightPx - 34))
+      : Math.max(35, Math.min(95, labelHeightPx - 16));
+
+  const totalLabelsToPrint = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
 
   const handlePrint = () => {
     window.print();
   };
 
   const handleDownloadPDF = async () => {
-    const element = document.getElementById('label-capture-content');
-    if (!element) return;
     setIsExporting(true);
     try {
       const html2canvas = (await import('html2canvas')).default;
       const { jsPDF } = await import('jspdf');
 
-      const canvas = await html2canvas(element, {
-        scale: 4, // Ultra high resolution for pristine barcode rendering
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      
-      // Page size is set precisely to the customized label paper size in mm
+      // Create a jsPDF document using selected roll paper format in mm
       const pdf = new jsPDF({
         orientation: labelWidth > labelHeight ? 'landscape' : 'portrait',
         unit: 'mm',
         format: [labelWidth, labelHeight]
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, labelWidth, labelHeight);
-      pdf.save(`etiqueta-${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`);
+      let exportPageCount = 0;
+
+      // Asynchronously render and capture each label in the scheduled batch queue
+      for (let pIndex = 0; pIndex < products.length; pIndex++) {
+        const p = products[pIndex];
+        const qty = quantities[p.id] || 1;
+        for (let q = 0; q < qty; q++) {
+          const elementId = `label-print-${p.id}-${q}`;
+          const element = document.getElementById(elementId);
+          if (!element) continue;
+
+          const canvas = await html2canvas(element, {
+            scale: 4, // Outstanding vectors resolution
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+
+          // Push to a new sheet for subsequent labels
+          if (exportPageCount > 0) {
+            pdf.addPage([labelWidth, labelHeight], labelWidth > labelHeight ? 'landscape' : 'portrait');
+          }
+
+          pdf.addImage(imgData, 'PNG', 0, 0, labelWidth, labelHeight);
+          exportPageCount++;
+        }
+      }
+
+      pdf.save(`etiquetas-${products.length === 1 ? products[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'lote'}.pdf`);
     } catch (err) {
       console.error('Error generating PDF:', err);
     } finally {
@@ -1224,94 +1403,266 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 10000 }}>
-      <div className="modal-content" style={{ maxWidth: '420px', background: 'var(--c-surface-1)', color: 'var(--c-text)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Imprimir Etiqueta de Producto</h3>
+      <div className="modal-content" style={{ maxWidth: '460px', background: 'var(--c-surface-1)', color: 'var(--c-text)', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0 }}>
+          <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Imprimir Etiquetas</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--c-text-muted)', cursor: 'pointer', fontSize: '24px' }}>&times;</button>
         </div>
         
-        {/* Sliders for Width/Height Auto-adjustment */}
-        <div style={{ background: 'var(--c-surface-2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--c-border)', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📏 Dimensiones de la Etiqueta (Autoajustable)</div>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span>Ancho del Papel:</span>
-              <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{labelWidth} mm</span>
-            </div>
-            <input type="range" min="30" max="80" value={labelWidth} onChange={e => setLabelWidth(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--c-green)' }} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-              <span>Alto del Papel:</span>
-              <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{labelHeight} mm</span>
-            </div>
-            <input type="range" min="20" max="60" value={labelHeight} onChange={e => setLabelHeight(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--c-green)' }} />
-          </div>
-        </div>
-
-        {/* Scaled Preview Box */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 700 }}>VISTA PREVIA REAL</div>
-          
-          <div style={{
-            width: 'fit-content',
-            height: 'fit-content',
-            background: 'white',
-            borderRadius: '4px',
-            border: '2px dashed var(--c-green)',
-            display: 'flex',
-            boxSizing: 'border-box',
-            margin: '0 auto',
-            overflow: 'hidden',
-          }}>
-            <div id="label-capture-content" style={{
-              width: `${labelWidth}mm`,
-              height: `${labelHeight}mm`,
-              background: 'white',
-              color: 'black',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxSizing: 'border-box',
-              overflow: 'hidden',
-              padding: '6px',
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            }}>
-              <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px', lineHeight: '1.2' }}>Natural by Nutrit</div>
-              <div style={{
-                fontSize: '11px',
-                fontWeight: 900,
-                width: '100%',
-                textAlign: 'center',
-                lineHeight: '1.3',
-                margin: '2px 0',
-                paddingTop: '1px',
-                paddingBottom: '1px',
-                wordBreak: 'break-word',
-                maxHeight: '2.6em',
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-              }}>{product.name}</div>
-              <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0', lineHeight: '1.2' }}>${product.price}</div>
-              <div style={{ margin: '2px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Barcode value={barcodeValue} barWidth={optimalBarWidth} height={optimalBarHeight} />
+        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px' }}>
+          {/* 1. Quantities selection list (shown only in Batch Mode) */}
+          {products.length > 1 && (
+            <div style={{ background: 'var(--c-surface-2)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--c-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontWeight: 700, fontSize: '11px', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📋 Copias por Producto</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '110px', overflowY: 'auto', paddingRight: '2px' }}>
+                {products.map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{p.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button 
+                        onClick={() => setQuantities(q => ({ ...q, [p.id]: Math.max(1, (q[p.id] || 1) - 1) }))}
+                        style={{ border: 'none', background: 'rgba(255,255,255,0.06)', color: 'var(--c-text)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >-</button>
+                      <span style={{ width: '22px', textAlign: 'center', fontWeight: '800', color: 'var(--c-green)' }}>{quantities[p.id] || 1}</span>
+                      <button 
+                        onClick={() => setQuantities(q => ({ ...q, [p.id]: (q[p.id] || 1) + 1 }))}
+                        style={{ border: 'none', background: 'rgba(255,255,255,0.06)', color: 'var(--c-text)', cursor: 'pointer', width: '24px', height: '24px', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >+</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          )}
+
+          {/* 2. Controls Panel (Presets, Templates, QR) */}
+          <div style={{ background: 'var(--c-surface-2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--c-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--c-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>⚙️ Configuración del Formato</div>
+            
+            {/* Presets Select */}
+            <div>
+              <div style={{ fontSize: '13px', marginBottom: '4px', color: 'var(--c-text-secondary)' }}>Tamaño del Rollo:</div>
+              <select 
+                value={preset} 
+                onChange={e => handlePresetChange(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--c-border)', background: 'var(--c-surface-1)', color: 'var(--c-text)', outline: 'none' }}
+              >
+                <option value="50x30">50 x 30 mm (Estándar Térmico)</option>
+                <option value="60x40">60 x 40 mm (Mediano)</option>
+                <option value="30x20">30 x 20 mm (Compacto)</option>
+                <option value="80x50">80 x 50 mm (Grande / Envío)</option>
+                <option value="custom">Personalizado (Manual)</option>
+              </select>
+            </div>
+
+            {/* Custom Paper Size Sliders */}
+            {preset === 'custom' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '2px' }}>
+                    <span>Ancho del Papel:</span>
+                    <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{labelWidth} mm</span>
+                  </div>
+                  <input type="range" min="30" max="80" value={labelWidth} onChange={e => setLabelWidth(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--c-green)' }} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '2px' }}>
+                    <span>Alto del Papel:</span>
+                    <span style={{ fontWeight: 800, color: 'var(--c-green)' }}>{labelHeight} mm</span>
+                  </div>
+                  <input type="range" min="20" max="60" value={labelHeight} onChange={e => setLabelHeight(Number(e.target.value))} style={{ width: '100%', accentColor: 'var(--c-green)' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Template Selector */}
+            <div>
+              <div style={{ fontSize: '13px', marginBottom: '4px', color: 'var(--c-text-secondary)' }}>Estructura de la Plantilla:</div>
+              <div style={{ display: 'flex', background: 'var(--c-surface-1)', borderRadius: '8px', padding: '3px', border: '1px solid var(--c-border)' }}>
+                <button 
+                  onClick={() => setTemplate('completo')}
+                  style={{ flex: 1, padding: '6px 8px', fontSize: '11px', border: 'none', borderRadius: '6px', background: template === 'completo' ? 'var(--c-green)' : 'transparent', color: template === 'completo' ? 'white' : 'var(--c-text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                >
+                  Completa
+                </button>
+                <button 
+                  onClick={() => setTemplate('compacto')}
+                  style={{ flex: 1, padding: '6px 8px', fontSize: '11px', border: 'none', borderRadius: '6px', background: template === 'compacto' ? 'var(--c-green)' : 'transparent', color: template === 'compacto' ? 'white' : 'var(--c-text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                >
+                  Compacta
+                </button>
+                <button 
+                  onClick={() => setTemplate('horizontal')}
+                  style={{ flex: 1, padding: '6px 8px', fontSize: '11px', border: 'none', borderRadius: '6px', background: template === 'horizontal' ? 'var(--c-green)' : 'transparent', color: template === 'horizontal' ? 'white' : 'var(--c-text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                >
+                  Horizontal
+                </button>
+              </div>
+            </div>
+
+            {/* QR/Barcode Toggle Switch */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--c-text-secondary)' }}>Usar Código QR en vez de Barras:</span>
+              <div 
+                onClick={() => setUseQR(!useQR)}
+                style={{
+                  width: '42px',
+                  height: '22px',
+                  background: useQR ? 'var(--c-green)' : 'rgba(255,255,255,0.1)',
+                  borderRadius: '100px',
+                  padding: '2px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: useQR ? 'flex-end' : 'flex-start',
+                  transition: 'all 0.2s',
+                  boxShadow: useQR ? '0 0 8px rgba(34, 197, 94, 0.4)' : 'none',
+                }}
+              >
+                <div style={{ width: '18px', height: '18px', background: 'white', borderRadius: '50%' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Scaled Real Preview Panel */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 700, letterSpacing: '0.05em' }}>VISTA PREVIA REAL</div>
+            
+            <div style={{
+              width: 'fit-content',
+              height: 'fit-content',
+              background: 'white',
+              borderRadius: '4px',
+              border: '2px dashed var(--c-green)',
+              display: 'flex',
+              boxSizing: 'border-box',
+              margin: '0 auto',
+              overflow: 'hidden',
+            }}>
+              <div id="label-capture-content" style={{
+                width: `${labelWidth}mm`,
+                height: `${labelHeight}mm`,
+                background: 'white',
+                color: 'black',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+                padding: '6px',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+              }}>
+                {template === 'completo' && (
+                  <>
+                    <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px', lineHeight: '1.2' }}>Natural by Nutrit</div>
+                    <div style={{
+                      fontSize: '11px',
+                      fontWeight: 900,
+                      width: '100%',
+                      textAlign: 'center',
+                      lineHeight: '1.3',
+                      margin: '2px 0',
+                      paddingTop: '1px',
+                      paddingBottom: '1px',
+                      wordBreak: 'break-word',
+                      maxHeight: '2.6em',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}>{activeProduct.name}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0', lineHeight: '1.2' }}>${activeProduct.price}</div>
+                    <div style={{ margin: '2px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      {useQR ? (
+                        <QRCodeComponent value={barcodeValue} size={optimalQRSize} />
+                      ) : (
+                        <Barcode value={barcodeValue} barWidth={optimalBarWidth} height={optimalBarHeight} />
+                      )}
+                    </div>
+                  </>
+                )}
+                {template === 'compacto' && (
+                  <>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: 900,
+                      width: '100%',
+                      textAlign: 'center',
+                      lineHeight: '1.2',
+                      marginBottom: '4px',
+                      paddingTop: '1px',
+                      wordBreak: 'break-word',
+                      maxHeight: '2.4em',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}>{activeProduct.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      {useQR ? (
+                        <QRCodeComponent value={barcodeValue} size={optimalQRSize} />
+                      ) : (
+                        <Barcode value={barcodeValue} barWidth={optimalBarWidth * 1.1} height={optimalBarHeight} />
+                      )}
+                    </div>
+                  </>
+                )}
+                {template === 'horizontal' && (
+                  <div style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '2px', boxSizing: 'border-box' }}>
+                    <div style={{ width: '45%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', textAlign: 'left', height: '100%' }}>
+                      <div style={{ fontSize: '6px', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', opacity: 0.6, marginBottom: '2px' }}>Natural</div>
+                      <div style={{ fontSize: '9px', fontWeight: 900, lineHeight: '1.2', margin: '2px 0', wordBreak: 'break-word', maxHeight: '3.6em', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', color: 'black' }}>{activeProduct.name}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 900, color: 'black', marginTop: '2px' }}>${activeProduct.price}</div>
+                    </div>
+                    <div style={{ width: '55%', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                      {useQR ? (
+                        <QRCodeComponent value={barcodeValue} size={optimalQRSize} />
+                      ) : (
+                        <Barcode value={barcodeValue} barWidth={optimalBarWidth * 0.9} height={optimalBarHeight * 0.8} />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Paging controls for Batch previews */}
+            {products.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
+                <button 
+                  disabled={currentIndex === 0}
+                  onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+                  className="btn-ghost"
+                  style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '20px', border: 'none', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', opacity: currentIndex === 0 ? 0.3 : 1 }}
+                >
+                  ◀ Ant.
+                </button>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--c-text-muted)' }}>
+                  Etiqueta <strong style={{ color: 'var(--c-text)' }}>{currentIndex + 1}</strong> de {products.length}
+                </span>
+                <button 
+                  disabled={currentIndex === products.length - 1}
+                  onClick={() => setCurrentIndex(i => Math.min(products.length - 1, i + 1))}
+                  className="btn-ghost"
+                  style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '20px', border: 'none', background: 'rgba(255,255,255,0.04)', cursor: 'pointer', opacity: currentIndex === products.length - 1 ? 0.3 : 1 }}
+                >
+                  Sig. ▶
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Action guidelines helper card */}
-        <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', padding: '12px', borderRadius: '10px', fontSize: '11px', color: 'var(--c-text-secondary)', marginBottom: '20px', lineHeight: '1.4' }}>
-          💡 <strong>Tip de Impresión:</strong> Para etiquetas térmicas, en la ventana de impresión pon <strong>Márgenes: Ninguno</strong> y desactiva <strong>Cabeceras/Pies de página</strong> para un ajuste perfecto.
+        <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)', padding: '12px', borderRadius: '10px', fontSize: '11px', color: 'var(--c-text-secondary)', marginBottom: '16px', lineHeight: '1.4', flexShrink: 0 }}>
+          💡 <strong>Tip de Impresión:</strong> Margen: <strong>Ninguno</strong> y desactiva <strong>Cabeceras/Pies</strong>. Impresión en Lote: Se generará 1 página por etiqueta autoadhesiva automáticamente.
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={handlePrint} className="btn-green" style={{ flex: 1, padding: '12px', fontSize: '13px' }}>
-              🖨️ Imprimir
+              🖨️ Imprimir ({totalLabelsToPrint})
             </button>
             <button onClick={handleDownloadPDF} disabled={isExporting} className="btn-ghost" style={{ flex: 1, padding: '12px', fontSize: '13px' }}>
               {isExporting ? '⏳ Generando...' : '📄 Guardar PDF'}
@@ -1327,39 +1678,127 @@ function LabelPreviewModal({ product, onClose }: LabelPreviewModalProps) {
           position: 'fixed',
           left: '-9999px',
           top: '-9999px',
-          width: `${labelWidth}mm`,
-          height: `${labelHeight}mm`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'white',
-          color: 'black',
-          padding: '6px',
-          boxSizing: 'border-box',
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          width: 'auto',
+          height: 'auto',
+          display: 'block',
         }}>
-          <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px', lineHeight: '1.2' }}>Natural by Nutrit</div>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 900,
-            width: '100%',
-            textAlign: 'center',
-            lineHeight: '1.3',
-            margin: '2px 0',
-            paddingTop: '1px',
-            paddingBottom: '1px',
-            wordBreak: 'break-word',
-            maxHeight: '2.6em',
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}>{product.name}</div>
-          <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0', lineHeight: '1.2' }}>${product.price}</div>
-          <div style={{ margin: '2px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <Barcode value={barcodeValue} barWidth={optimalBarWidth} height={optimalBarHeight} />
-          </div>
+          {products.flatMap(p => {
+            const qty = quantities[p.id] || 1;
+            const barcodeVal = getBarcodeValue(p);
+            const cleanVal = barcodeVal.toUpperCase().replace(/[^0-9A-Z\-\.\s\$\/\+\%]/g, '');
+            const bitStringLen = (cleanVal.length + 2) * 13;
+            
+            const barW = Math.max(0.7, Math.min(1.5, (labelWidthPx - 20) / bitStringLen));
+            
+            const barH = template === 'completo'
+              ? Math.max(18, Math.min(40, labelHeightPx - 72))
+              : template === 'compacto'
+                ? Math.max(24, Math.min(55, labelHeightPx - 40))
+                : Math.max(18, Math.min(40, labelHeightPx - 26));
+
+            const qrS = template === 'completo'
+              ? Math.max(30, Math.min(80, labelHeightPx - 68))
+              : template === 'compacto'
+                ? Math.max(35, Math.min(100, labelHeightPx - 34))
+                : Math.max(35, Math.min(95, labelHeightPx - 16));
+
+            const labelsArray = [];
+            for (let i = 0; i < qty; i++) {
+              labelsArray.push(
+                <div 
+                  key={`${p.id}-${i}`}
+                  id={`label-print-${p.id}-${i}`}
+                  className="printable-label-page"
+                  style={{
+                    width: `${labelWidth}mm`,
+                    height: `${labelHeight}mm`,
+                    background: 'white',
+                    color: 'black',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxSizing: 'border-box',
+                    padding: '6px',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                  }}
+                >
+                  {template === 'completo' && (
+                    <>
+                      <div style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', opacity: 0.7, marginBottom: '2px', lineHeight: '1.2' }}>Natural by Nutrit</div>
+                      <div style={{
+                        fontSize: '11px',
+                        fontWeight: 900,
+                        width: '100%',
+                        textAlign: 'center',
+                        lineHeight: '1.3',
+                        margin: '2px 0',
+                        paddingTop: '1px',
+                        paddingBottom: '1px',
+                        wordBreak: 'break-word',
+                        maxHeight: '2.6em',
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                      }}>{p.name}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 900, margin: '2px 0', lineHeight: '1.2' }}>${p.price}</div>
+                      <div style={{ margin: '2px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        {useQR ? (
+                          <QRCodeComponent value={barcodeVal} size={qrS} />
+                        ) : (
+                          <Barcode value={barcodeVal} barWidth={barW} height={barH} />
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {template === 'compacto' && (
+                    <>
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        width: '100%',
+                        textAlign: 'center',
+                        lineHeight: '1.2',
+                        marginBottom: '4px',
+                        paddingTop: '1px',
+                        wordBreak: 'break-word',
+                        maxHeight: '2.4em',
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                      }}>{p.name}</div>
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        {useQR ? (
+                          <QRCodeComponent value={barcodeVal} size={qrS} />
+                        ) : (
+                          <Barcode value={barcodeVal} barWidth={barW * 1.1} height={barH} />
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {template === 'horizontal' && (
+                    <div style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'space-between', padding: '2px', boxSizing: 'border-box' }}>
+                      <div style={{ width: '45%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', textAlign: 'left', height: '100%' }}>
+                        <div style={{ fontSize: '6px', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', opacity: 0.6, marginBottom: '2px' }}>Natural</div>
+                        <div style={{ fontSize: '9px', fontWeight: 900, lineHeight: '1.2', margin: '2px 0', wordBreak: 'break-word', maxHeight: '3.6em', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', color: 'black' }}>{p.name}</div>
+                        <div style={{ fontSize: '11px', fontWeight: 900, color: 'black', marginTop: '2px' }}>${p.price}</div>
+                      </div>
+                      <div style={{ width: '55%', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        {useQR ? (
+                          <QRCodeComponent value={barcodeVal} size={qrS} />
+                        ) : (
+                          <Barcode value={barcodeVal} barWidth={barW * 0.9} height={barH * 0.8} />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return labelsArray;
+          })}
         </div>
       </div>
     </div>
