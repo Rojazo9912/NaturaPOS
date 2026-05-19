@@ -92,7 +92,7 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--c-bg)', fontFamily: 'inherit' }}>
       {/* Header */}
-      <div style={{ background: 'var(--c-surface-1)', borderBottom: '1px solid var(--c-border)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="no-print" style={{ background: 'var(--c-surface-1)', borderBottom: '1px solid var(--c-border)', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--c-text)' }}>Panel de Administración</h1>
           <p style={{ color: 'var(--c-text-muted)' }}>Gestión de Catálogo, Recetas e Insumos</p>
@@ -113,7 +113,7 @@ export default function AdminPage() {
 
       <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: '1px solid var(--c-border)', paddingBottom: '16px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+        <div className="no-print" style={{ display: 'flex', gap: '8px', marginBottom: '32px', borderBottom: '1px solid var(--c-border)', paddingBottom: '16px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
           <button onClick={() => setActiveTab('PRODUCTS')} className={activeTab === 'PRODUCTS' ? 'btn-green' : 'btn-ghost'}>📦 Productos</button>
           <button onClick={() => setActiveTab('CATEGORIES')} className={activeTab === 'CATEGORIES' ? 'btn-green' : 'btn-ghost'}>🏷️ Categorías</button>
           <button onClick={() => setActiveTab('INGREDIENTS')} className={activeTab === 'INGREDIENTS' ? 'btn-green' : 'btn-ghost'}>🌾 Insumos Base</button>
@@ -125,7 +125,7 @@ export default function AdminPage() {
 
         {/* ── BUSINESS INTELLIGENCE QUICK SUMMARY ── */}
         {activeTab === 'PRODUCTS' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+          <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
             <div className="glass" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
               <div style={{ fontSize: '12px', color: 'var(--c-text-muted)', marginBottom: '8px', fontWeight: 800 }}>STOCK CRÍTICO</div>
               <div style={{ fontSize: '24px', fontWeight: 900, color: '#ef4444' }}>
@@ -163,7 +163,7 @@ export default function AdminPage() {
       </div>
 
       {/* Toast Messages Overlay */}
-      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="no-print" style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {toasts.map((toast, i) => (
           <div key={i} className="glass" style={{
             padding: '16px 20px', borderRadius: '12px', borderLeft: '4px solid #22c55e',
@@ -278,7 +278,8 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
 
   return (
     <div className="admin-grid">
-      <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
+      <div className="no-print" style={{ display: 'contents' }}>
+        <div style={{ background: 'var(--c-surface-1)', padding: '24px', borderRadius: '16px', border: '1px solid var(--c-border)' }}>
         <h3 style={{ fontWeight: 600, marginBottom: '16px' }}>Nuevo Producto</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <input className="input-dark" placeholder="Nombre" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} required />
@@ -429,6 +430,7 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
           </div>
         </div>
       )}
+      </div>
 
       {showLabelModal && (selectedProductForLabel || selectedProductIds.length > 0) && (
         <LabelPreviewModal
@@ -1404,7 +1406,8 @@ function LabelPreviewModal({ products, onClose }: LabelPreviewModalProps) {
   return (
     <div className="modal-overlay" style={{ zIndex: 10000 }}>
       <div className="modal-content" style={{ maxWidth: '460px', background: 'var(--c-surface-1)', color: 'var(--c-text)', maxHeight: '95vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0 }}>
+        <div className="no-print" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexShrink: 0 }}>
           <h3 style={{ fontSize: '18px', fontWeight: 800 }}>Imprimir Etiquetas</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--c-text-muted)', cursor: 'pointer', fontSize: '24px' }}>&times;</button>
         </div>
@@ -1671,6 +1674,7 @@ function LabelPreviewModal({ products, onClose }: LabelPreviewModalProps) {
           <button onClick={onClose} className="btn-ghost" style={{ width: '100%', padding: '10px', fontSize: '12px', border: 'none', background: 'rgba(255,255,255,0.03)' }}>
             Cerrar
           </button>
+        </div>
         </div>
 
         {/* Target print container - absolute positioned off-screen normally, displayed absolute by @media print */}
