@@ -11,6 +11,7 @@ import {
   apiCreateCheckoutSession, apiGetActiveRegister,
   apiGetPendingOrdersCount,
   apiCreateCustomer,
+  apiGetIngredients, apiAdjustInventory,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 import { printTicketWebUSB } from '@/lib/printer'
@@ -108,6 +109,70 @@ export default function POSPage() {
       addToast(`❌ Error: ${err.message || 'No se pudo registrar cliente'}`)
     } finally {
       setCreatingCustomer(false)
+    }
+  }
+
+  // ── Módulo de Mermas Rápidas ──
+  const [showWasteModal, setShowWasteModal] = useState(false)
+  const [wasteType, setWasteType] = useState<'PRODUCT' | 'INGREDIENT'>('PRODUCT')
+  const [wasteProductId, setWasteProductId] = useState('')
+  const [wasteIngredientId, setWasteIngredientId] = useState('')
+  const [wasteQty, setWasteQty] = useState('')
+  const [wasteReason, setWasteReason] = useState('Error de preparación')
+  const [wasteNotes, setWasteNotes] = useState('')
+  const [ingredients, setIngredients] = useState<any[]>([])
+  const [submittingWaste, setSubmittingWaste] = useState(false)
+
+  useEffect(() => {
+    if (showWasteModal && ingredients.length === 0) {
+      const token = getToken()
+      if (token) {
+        apiGetIngredients(token).then(setIngredients).catch(console.error)
+      }
+    }
+  }, [showWasteModal, ingredients.length])
+
+  const handleSaveWaste = async () => {
+    const qtyNum = Number(wasteQty)
+    if (!qtyNum || qtyNum <= 0) {
+      addToast('❌ Ingresa una cantidad válida mayor a cero.')
+      return
+    }
+    if (wasteType === 'PRODUCT' && !wasteProductId) {
+      addToast('❌ Selecciona un producto del catálogo.')
+      return
+    }
+    if (wasteType === 'INGREDIENT' && !wasteIngredientId) {
+      addToast('❌ Selecciona un insumo.')
+      return
+    }
+
+    const token = getToken()
+    if (!token) return
+
+    setSubmittingWaste(true)
+    try {
+      const adjustmentData = {
+        productId: wasteType === 'PRODUCT' ? wasteProductId : undefined,
+        ingredientId: wasteType === 'INGREDIENT' ? wasteIngredientId : undefined,
+        quantity: -Math.abs(qtyNum),
+        reason: `${wasteReason}${wasteNotes ? ' - ' + wasteNotes : ''}`,
+        type: 'WASTE'
+      }
+
+      await apiAdjustInventory(token, adjustmentData)
+      addToast('🗑️ Merma registrada y descontada del inventario con éxito.')
+      
+      // Reset state and close
+      setWasteQty('')
+      setWasteProductId('')
+      setWasteIngredientId('')
+      setWasteNotes('')
+      setShowWasteModal(false)
+    } catch (err: any) {
+      addToast(`❌ Error al registrar merma: ${err.message || 'Error desconocido'}`)
+    } finally {
+      setSubmittingWaste(false)
     }
   }
 
@@ -457,6 +522,7 @@ export default function POSPage() {
             <a href="/ventas" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Ventas">📋<span className="hide-mobile ml-1">Ventas</span></a>
             <a href="/inventory" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Stock">📦<span className="hide-mobile ml-1">Stock</span></a>
             <a href="/dashboard" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Dashboard">📊<span className="hide-mobile ml-1">Dashboard</span></a>
+            <button onClick={() => setShowWasteModal(true)} className="text-base md:text-xs text-zinc-400 no-underline hover:text-red-500 bg-transparent border-none cursor-pointer flex items-center p-0" style={{ font: 'inherit' }} title="Registrar Merma">🗑️<span className="hide-mobile ml-1">Merma</span></button>
           </div>
         </div>
 
@@ -930,6 +996,143 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Waste Modal ── */}
+      {showWasteModal && (
+        <div className="modal-overlay" style={{ zIndex: 100 }}>
+          <div className="modal-content" style={{ maxWidth: '450px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>Registrar Merma / Desperdicio 🗑️</h3>
+            <p style={{ fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '20px' }}>
+              Registra los insumos o productos desperdiciados para mantener la precisión del inventario.
+            </p>
+
+            {/* Waste Type Selector */}
+            <div className="flex gap-2 mb-4">
+              <button 
+                onClick={() => setWasteType('PRODUCT')} 
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  wasteType === 'PRODUCT' ? 'bg-green-500 text-black border-none' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                }`}
+              >
+                📦 Producto Catálogo
+              </button>
+              <button 
+                onClick={() => setWasteType('INGREDIENT')} 
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  wasteType === 'INGREDIENT' ? 'bg-green-500 text-black border-none' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                }`}
+              >
+                🌿 Insumo / Ingrediente
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+              {/* Item Selector */}
+              {wasteType === 'PRODUCT' ? (
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    Seleccionar Producto
+                  </label>
+                  <select 
+                    value={wasteProductId} 
+                    onChange={e => setWasteProductId(e.target.value)}
+                    className="input-dark w-full p-2.5 text-sm"
+                    style={{ background: '#0a0a0a' }}
+                  >
+                    <option value="">-- Elige un producto --</option>
+                    {(products || []).filter(p => p.isActive).map(p => (
+                      <option key={p.id} value={p.id}>{p.name} (${p.price.toFixed(2)})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                    Seleccionar Insumo / Ingrediente
+                  </label>
+                  <select 
+                    value={wasteIngredientId} 
+                    onChange={e => setWasteIngredientId(e.target.value)}
+                    className="input-dark w-full p-2.5 text-sm"
+                    style={{ background: '#0a0a0a' }}
+                  >
+                    <option value="">-- Elige un insumo --</option>
+                    {(ingredients || []).map(i => (
+                      <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Quantity */}
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Cantidad Desperdiciada
+                </label>
+                <input 
+                  type="number"
+                  step="any"
+                  value={wasteQty}
+                  onChange={e => setWasteQty(e.target.value)}
+                  placeholder="Ej: 1 o 0.5"
+                  className="input-dark w-full p-2.5 text-sm"
+                />
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Motivo de Merma
+                </label>
+                <select 
+                  value={wasteReason} 
+                  onChange={e => setWasteReason(e.target.value)}
+                  className="input-dark w-full p-2.5 text-sm"
+                  style={{ background: '#0a0a0a' }}
+                >
+                  <option value="Error de preparación">🥤 Error de preparación</option>
+                  <option value="Insumo caducado / dañado">🍎 Insumo caducado / dañado</option>
+                  <option value="Merma operativa">⚙️ Merma operativa</option>
+                  <option value="Otro">❓ Otro motivo</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Notas Adicionales (Opcional)
+                </label>
+                <input 
+                  type="text"
+                  value={wasteNotes}
+                  onChange={e => setWasteNotes(e.target.value)}
+                  placeholder="Detalles sobre la merma..."
+                  className="input-dark w-full p-2.5 text-sm"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setShowWasteModal(false)} 
+                className="btn-ghost"
+                style={{ flex: 1, padding: '12px' }} 
+                disabled={submittingWaste}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSaveWaste} 
+                className="btn-green"
+                style={{ flex: 2, padding: '12px', background: '#ef4444', color: '#fff', border: 'none' }} 
+                disabled={submittingWaste}
+              >
+                {submittingWaste ? 'Procesando...' : '🗑️ Confirmar Merma'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Payment Modal ── */}
       {showPayModal && (

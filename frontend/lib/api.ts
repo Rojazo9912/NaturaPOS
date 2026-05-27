@@ -256,12 +256,26 @@ export interface FinancialCut {
 }
 
 export async function apiGetActiveRegister(token: string): Promise<CashRegister | null> {
-  const res = await fetch(`${API}/api/v1/cash-register/active`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (!res.ok) throw new Error('Error buscando caja')
-  const text = await res.text()
-  return text ? JSON.parse(text) : null
+  try {
+    const res = await fetch(`${API}/api/v1/cash-register/active`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error('Error buscando caja')
+    const text = await res.text()
+    if (text) {
+      localStorage.setItem('naturalos_active_register', text)
+      return JSON.parse(text)
+    } else {
+      localStorage.removeItem('naturalos_active_register')
+      return null
+    }
+  } catch (err) {
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      const cached = localStorage.getItem('naturalos_active_register')
+      return cached ? JSON.parse(cached) : null
+    }
+    return null
+  }
 }
 
 export async function apiOpenRegister(token: string, openingAmount: number): Promise<CashRegister> {
@@ -271,7 +285,9 @@ export async function apiOpenRegister(token: string, openingAmount: number): Pro
     body: JSON.stringify({ openingAmount }),
   })
   if (!res.ok) throw new Error('Error al abrir caja')
-  return res.json()
+  const data = await res.json()
+  localStorage.setItem('naturalos_active_register', JSON.stringify(data))
+  return data
 }
 
 export async function apiCloseRegister(token: string, id: string, closingAmount: number, notes?: string, fiscalPercentage?: number) {
@@ -281,6 +297,7 @@ export async function apiCloseRegister(token: string, id: string, closingAmount:
     body: JSON.stringify({ closingAmount, notes, fiscalPercentage }),
   })
   if (!res.ok) throw new Error('Error al cerrar caja')
+  localStorage.removeItem('naturalos_active_register')
   return res.json()
 }
 
@@ -369,6 +386,7 @@ export async function apiAdjustInventory(token: string, data: {
   productId?: string
   quantity: number
   reason?: string
+  type?: string
 }) {
   const res = await fetch(`${API}/api/v1/inventory/adjust`, {
     method: 'POST',

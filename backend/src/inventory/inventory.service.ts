@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MovementType } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
@@ -15,7 +16,7 @@ export class InventoryService {
     });
   }
 
-  async adjust(branchId: string, userId: string, data: { productId?: string; ingredientId?: string; quantity: number; reason?: string }) {
+  async adjust(branchId: string, userId: string, data: { productId?: string; ingredientId?: string; quantity: number; reason?: string; type?: MovementType }) {
     if (!data.productId && !data.ingredientId) {
       throw new BadRequestException('Debe especificar producto o ingrediente');
     }
@@ -47,7 +48,7 @@ export class InventoryService {
         branchId,
         productId: data.productId,
         ingredientId: data.ingredientId,
-        type: data.quantity > 0 ? 'PURCHASE' : 'ADJUSTMENT',
+        type: data.type ?? (data.quantity > 0 ? 'PURCHASE' : 'ADJUSTMENT'),
         quantity: Math.abs(data.quantity),
         reason: data.reason ?? 'Ajuste manual',
         userId,
