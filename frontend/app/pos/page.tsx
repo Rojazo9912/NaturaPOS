@@ -12,14 +12,14 @@ import {
   apiGetPendingOrdersCount,
   apiCreateCustomer,
   apiGetIngredients, apiAdjustInventory,
-  apiCreateCashMovement,
+  apiCreateCashMovement, apiGetCustomer,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 import { printTicketWebUSB } from '@/lib/printer'
 import { getSocket } from '@/lib/socket'
 import { useBarcodeScanner, playScanSound } from '@/lib/useBarcodeScanner'
 // ── Types ───────────────────────────────────────────
-interface CartItem extends Product { qty: number }
+interface CartItem extends Product { qty: number; notes?: string }
 
 // ── Static Data ──────────────────────────────────────
 const PAYMENT_METHODS = [
@@ -51,6 +51,7 @@ export default function POSPage() {
   const [cart, setCart]             = useState<CartItem[]>([])
   const [phoneQuery, setPhoneQuery] = useState('')
   const [customer, setCustomer]     = useState<Customer | null>(null)
+  const [customerOrders, setCustomerOrders] = useState<any[]>([])
   const [customerLoading, setCustomerLoading] = useState(false)
   const [paymentMethod, setPaymentMethod]     = useState('CASH')
   const [showPayModal, setShowPayModal]       = useState(false)
@@ -283,14 +284,27 @@ export default function POSPage() {
   // Customer search — debounced
   useEffect(() => {
     const token = getToken()
-    if (!token || phoneQuery.length < 6) { setCustomer(null); return }
+    if (!token || phoneQuery.length < 6) { 
+      setCustomer(null)
+      setCustomerOrders([])
+      return 
+    }
     const id = setTimeout(async () => {
       setCustomerLoading(true)
       try {
         const results = await apiSearchCustomers(token, phoneQuery)
-        setCustomer(results[0] ?? null)
+        const found = results[0] ?? null
+        setCustomer(found)
+        if (found) {
+          apiGetCustomer(token, found.id)
+            .then((data: any) => setCustomerOrders(data.orders || []))
+            .catch(console.error)
+        } else {
+          setCustomerOrders([])
+        }
       } catch {
         setCustomer(null)
+        setCustomerOrders([])
       } finally {
         setCustomerLoading(false)
       }
@@ -406,12 +420,13 @@ export default function POSPage() {
         subtotal,
         discountAmount: discount,
         total: finalTotal,
-        items: cart.map(i => ({
-          productId: i.id,
-          quantity: i.qty,
-          unitPrice: i.price,
-          subtotal: i.price * i.qty,
-        })),
+          items: cart.map(i => ({
+            productId: i.id,
+            quantity: i.qty,
+            unitPrice: i.price,
+            subtotal: i.price * i.qty,
+            notes: i.notes || null,
+          })),
         payments,
         pointsEarned: customer ? Math.floor(finalTotal * 0.1) : 0,
         pointsRedeemed: redeemed,
@@ -441,6 +456,24 @@ export default function POSPage() {
   // Keyboard shortcut: Enter = confirm payment when modal open
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Don't trigger standard POS shortcuts if typing in an input
+      const isInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA'
+      
+      if (!isInput) {
+        if (e.key === 'F2') {
+          e.preventDefault()
+          searchRef.current?.focus()
+        } else if (e.key === 'F4') {
+          e.preventDefault()
+          if (cart.length > 0) setShowPayModal(true)
+        } else if (e.key === 'F8') {
+          e.preventDefault()
+          const methods = ['CASH', 'CARD', 'TRANSFER', 'WALLET', 'QR']
+          const next = methods[(methods.indexOf(paymentMethod) + 1) % methods.length]
+          setPaymentMethod(next)
+        }
+      }
+
       if (e.key === 'Enter' && showPayModal && !paying) {
         const canPay = paymentMethod !== 'CASH' || !cashGiven || Number(cashGiven) >= finalTotal
         if (canPay && (cart || []).length > 0) handlePay()
@@ -856,6 +889,35 @@ export default function POSPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Historial de Pedidos Recientes */}
+                {customerOrders.length > 0 && (
+                  <div className="mt-3 p-3 rounded-xl bg-indigo-950/20 border border-indigo-500/30">
+                    <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-wider text-indigo-400">
+                      <span>🕒</span> Repetir Último Pedido
+                    </div>
+                    <div className="space-y-2">
+                      {customerOrders.slice(0, 2).map((o: any) => (
+                        <div key={o.id} className="flex justify-between items-center bg-zinc-950/50 p-2 rounded-lg border border-zinc-800">
+                          <div className="min-w-0 pr-2">
+                            <div className="text-[10px] text-white font-bold">{new Date(o.createdAt).toLocaleDateString()} - {fmt(o.total)}</div>
+                            <div className="text-[9px] text-zinc-500 truncate">{o.items?.map((i: any) => `${i.quantity}x ${i.product?.name}`).join(', ')}</div>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const newCart = o.items.map((i: any) => ({ ...i.product, qty: i.quantity, notes: i.notes }))
+                              setCart(newCart)
+                              addToast('✅ Pedido repetido agregado al carrito')
+                            }}
+                            className="text-[9px] shrink-0 px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded hover:bg-indigo-500/40 font-bold transition-colors"
+                          >
+                            Repetir
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -930,11 +992,32 @@ export default function POSPage() {
                         </span>
                       )}
                     </div>
+                    <input
+                      type="text"
+                      placeholder="Notas (ej. sin hielo)"
+                      value={item.notes || ''}
+                      onChange={e => setCart(prev => prev.map(ci => ci.id === item.id ? { ...ci, notes: e.target.value } : ci))}
+                      className="mt-1.5 w-full bg-zinc-950/50 border border-zinc-800 rounded p-1 text-[10px] text-zinc-300 focus:outline-none focus:border-green-500/50 transition-colors"
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => updateQty(item.id, -1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">-</button>
-                    <span className="text-sm font-bold w-4 text-center text-white">{item.qty}</span>
-                    <button onClick={() => updateQty(item.id, 1)} className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800">+</button>
+                  <div className="flex items-center gap-1.5 self-start mt-1">
+                    <button onClick={() => updateQty(item.id, -1)} className="w-7 h-7 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800 hover:border-red-500/50 active:scale-90 transition-all text-sm font-bold">−</button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.qty}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10)
+                        if (val > 0) {
+                          setCart(prev => prev.map(ci => ci.id === item.id ? { ...ci, qty: val } : ci))
+                        } else if (e.target.value === '' || val <= 0) {
+                          setCart(prev => prev.filter(ci => ci.id !== item.id))
+                        }
+                      }}
+                      className="w-10 h-7 rounded-md bg-zinc-900 border border-zinc-800 text-white text-center text-sm font-bold focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500/30 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      style={{ MozAppearance: 'textfield' }}
+                    />
+                    <button onClick={() => updateQty(item.id, 1)} className="w-7 h-7 rounded-md bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center hover:bg-zinc-800 hover:border-green-500/50 active:scale-90 transition-all text-sm font-bold">+</button>
                   </div>
                 </div>
               )
@@ -1029,6 +1112,10 @@ export default function POSPage() {
                   {m.emoji}
                 </button>
               ))}
+            </div>
+            
+            <div className="text-[10px] text-center text-zinc-600 font-medium">
+              Atajos: <span className="text-zinc-400 font-bold bg-zinc-900 px-1 py-0.5 rounded">F2</span> Buscar Cliente · <span className="text-zinc-400 font-bold bg-zinc-900 px-1 py-0.5 rounded">F4</span> Cobrar · <span className="text-zinc-400 font-bold bg-zinc-900 px-1 py-0.5 rounded">F8</span> Método
             </div>
 
             <button
@@ -1345,23 +1432,115 @@ export default function POSPage() {
                   </div>
                 </div>
 
-                {customer && customer.points > 0 && (
-                  <div style={{ marginBottom: '20px', background: '#f59e0b10', padding: '12px', borderRadius: '12px', border: '1px solid #f59e0b30' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 600 }}>🌟 Tienes {customer.points} puntos</span>
-                      <span style={{ fontSize: '12px', color: 'var(--c-text-muted)' }}>1 pt = $1</span>
+                {customer && customer.points > 0 && (() => {
+                  const maxRedeemable = Math.min(Math.floor(customer.points), Math.floor(subtotal - discount))
+                  const currentRedeem = Number(pointsToRedeem) || 0
+                  const quickAmounts = [50, 100, 200].filter(v => v <= maxRedeemable)
+                  
+                  return (
+                    <div style={{ marginBottom: '20px', background: '#f59e0b10', padding: '16px', borderRadius: '14px', border: '1px solid #f59e0b30' }}>
+                      {/* Header con equivalencia clara */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 700 }}>⭐ Natural Points Disponibles</div>
+                          <div style={{ fontSize: '11px', color: 'var(--c-text-muted)', marginTop: '2px' }}>1 punto = $1.00 MXN</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '18px', fontWeight: 900, color: '#f59e0b' }}>{Math.floor(customer.points)}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--c-text-muted)' }}>= {fmt(Math.floor(customer.points))}</div>
+                        </div>
+                      </div>
+
+                      {/* Equivalencia del canje actual */}
+                      {currentRedeem > 0 && (
+                        <div style={{ 
+                          padding: '8px 12px', borderRadius: '8px', 
+                          background: 'rgba(245,158,11,0.08)', 
+                          marginBottom: '12px', 
+                          fontSize: '12px', 
+                          color: '#fbbf24',
+                          fontWeight: 600,
+                          textAlign: 'center'
+                        }}>
+                          Canjeando {currentRedeem} pts = <strong style={{ color: '#f59e0b' }}>{fmt(currentRedeem)}</strong> de descuento
+                        </div>
+                      )}
+
+                      {/* Botones rápidos */}
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                        {quickAmounts.map(amt => (
+                          <button
+                            key={amt}
+                            onClick={() => setPointsToRedeem(amt.toString())}
+                            style={{
+                              padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
+                              cursor: 'pointer', border: '1px solid #f59e0b30',
+                              background: currentRedeem === amt ? '#f59e0b' : 'transparent',
+                              color: currentRedeem === amt ? '#000' : '#f59e0b',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {amt} pts (−{fmt(amt)})
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setPointsToRedeem(maxRedeemable.toString())}
+                          style={{
+                            padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
+                            cursor: 'pointer', border: '1px solid #f59e0b50',
+                            background: currentRedeem === maxRedeemable ? '#f59e0b' : 'rgba(245,158,11,0.15)',
+                            color: currentRedeem === maxRedeemable ? '#000' : '#fbbf24',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          🔥 Máximo ({maxRedeemable} pts = {fmt(maxRedeemable)})
+                        </button>
+                        {currentRedeem > 0 && (
+                          <button
+                            onClick={() => setPointsToRedeem('')}
+                            style={{
+                              padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
+                              cursor: 'pointer', border: '1px solid var(--c-border)',
+                              background: 'transparent', color: 'var(--c-text-muted)',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            ✕ Quitar
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Input manual */}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                          <input 
+                            value={pointsToRedeem} 
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '')
+                              const num = Number(val)
+                              if (num > maxRedeemable) {
+                                setPointsToRedeem(maxRedeemable.toString())
+                              } else {
+                                setPointsToRedeem(val)
+                              }
+                            }}
+                            placeholder="Puntos a canjear..."
+                            type="number" 
+                            className="input-dark" 
+                            max={maxRedeemable}
+                            style={{ width: '100%', padding: '10px 12px', paddingRight: '60px' }} 
+                          />
+                          <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '11px', color: 'var(--c-text-muted)', fontWeight: 600 }}>
+                            / {maxRedeemable}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--c-text-muted)', marginTop: '6px' }}>
+                        Máximo canjeable esta compra: <strong>{maxRedeemable} pts</strong> (limitado por total de venta)
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input value={pointsToRedeem} onChange={e => setPointsToRedeem(e.target.value.replace(/\D/g, ''))}
-                        placeholder="0" type="number" className="input-dark" max={Math.min(customer.points, subtotal - discount)}
-                        style={{ width: '100%', padding: '8px 12px' }} />
-                      <button onClick={() => setPointsToRedeem(Math.min(customer.points, subtotal - discount).toString())}
-                              className="btn-ghost" style={{ padding: '8px 12px', color: '#f59e0b' }}>
-                        Usar Max
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {paymentMethod === 'CASH' && (
                   <div style={{ marginBottom: '20px' }}>

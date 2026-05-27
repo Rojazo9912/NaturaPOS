@@ -11,7 +11,12 @@ export class DashboardService {
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [todayOrders, weekOrders, monthOrders, totalCustomers] = await Promise.all([
+    const yesterdayStart = new Date(today);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(yesterdayStart);
+    yesterdayEnd.setHours(23, 59, 59, 999);
+
+    const [todayOrders, weekOrders, monthOrders, totalCustomers, cancelledToday, yesterdayOrders] = await Promise.all([
       this.prisma.order.findMany({
         where: { branchId, status: 'COMPLETED', createdAt: { gte: today, lte: endOfDay } },
         include: { items: true },
@@ -29,6 +34,13 @@ export class DashboardService {
         },
       }),
       this.prisma.customer.count({ where: { isActive: true } }),
+      this.prisma.order.findMany({
+        where: { branchId, status: 'CANCELLED', createdAt: { gte: today, lte: endOfDay } },
+        include: { cashier: { select: { name: true } } },
+      }),
+      this.prisma.order.findMany({
+        where: { branchId, status: 'COMPLETED', createdAt: { gte: yesterdayStart, lte: yesterdayEnd } },
+      }),
     ]);
 
     const salesToday = todayOrders.reduce((s, o) => s + o.total, 0);
@@ -37,13 +49,40 @@ export class DashboardService {
     const ordersToday = todayOrders.length;
     const avgTicket   = ordersToday > 0 ? salesToday / ordersToday : 0;
 
+    // Calculate gross profit from cost data in order items
+    const totalCost = todayOrders.reduce((sum, order) => {
+      return sum + order.items.reduce((itemSum, item) => {
+        return itemSum + (item.costPrice * item.quantity);
+      }, 0);
+    }, 0);
+    const grossProfitToday = salesToday - totalCost;
+    const profitMargin = salesToday > 0 ? (grossProfitToday / salesToday) * 100 : 0;
+
+    // Cancellation summary
+    const cancellationsToday = cancelledToday.map(o => ({
+      orderNumber: o.orderNumber,
+      total: o.total,
+      cashierName: (o as any).cashier?.name || 'Desconocido',
+      cancelledAt: o.updatedAt,
+    }));
+
+    const salesYesterday = yesterdayOrders.reduce((s, o) => s + o.total, 0);
+    const ordersYesterday = yesterdayOrders.length;
+
     return {
       salesToday,
+      salesYesterday,
       salesWeek,
       salesMonth,
       ordersToday,
+      ordersYesterday,
       avgTicket,
       totalCustomers,
+      grossProfitToday,
+      profitMargin,
+      cancellationsToday,
+      cancellationsCount: cancelledToday.length,
+      cancellationsTotal: cancelledToday.reduce((s, o) => s + o.total, 0),
     };
   }
 

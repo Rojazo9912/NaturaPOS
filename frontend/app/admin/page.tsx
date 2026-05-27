@@ -403,6 +403,47 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [showLabelModal, setShowLabelModal] = useState(false)
 
+  // State for editing products
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', price: '', categoryId: '', description: '', barcode: '', allergens: '' })
+  const [editSubmitting, setEditSubmitting] = useState(false)
+
+  const openEditModal = (p: Product) => {
+    setEditingProduct(p)
+    setEditForm({
+      name: p.name,
+      price: p.price.toString(),
+      categoryId: p.categoryId || '',
+      description: p.description || '',
+      barcode: p.barcode || '',
+      allergens: (p as any).allergens || '',
+    })
+  }
+
+  const handleEditSubmit = async () => {
+    if (!editingProduct) return
+    const token = getToken()
+    if (!token) return
+    setEditSubmitting(true)
+    try {
+      await apiUpdateProduct(token, editingProduct.id, {
+        name: editForm.name,
+        price: Number(editForm.price),
+        categoryId: editForm.categoryId || null,
+        description: editForm.description || null,
+        barcode: editForm.barcode || null,
+        allergens: editForm.allergens || null,
+      })
+      addToast(`✅ Producto "${editForm.name}" actualizado con éxito`)
+      setEditingProduct(null)
+      onReload()
+    } catch (e: any) {
+      addToast(`❌ Error: ${e.message || 'No se pudo actualizar producto'}`)
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     const token = getToken()
@@ -519,19 +560,32 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
                   </button>
                 </td>
                 <td style={{ padding: '16px' }}>
-                  <button
-                    onClick={() => {
-                      setSelectedProductForLabel(p)
-                      setShowLabelModal(true)
-                    }}
-                    className="btn-ghost"
-                    style={{
-                      padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
-                      cursor: 'pointer', transition: 'all 0.2s'
-                    }}
-                  >
-                    🏷️ Etiqueta
-                  </button>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={() => openEditModal(p)}
+                      className="btn-ghost"
+                      style={{
+                        padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                        cursor: 'pointer', transition: 'all 0.2s', border: '1px solid rgba(99,102,241,0.3)',
+                        color: '#818cf8'
+                      }}
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedProductForLabel(p)
+                        setShowLabelModal(true)
+                      }}
+                      className="btn-ghost"
+                      style={{
+                        padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                        cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                    >
+                      🏷️ Etiqueta
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -597,6 +651,77 @@ function AdminProducts({ products, categories, onReload, addToast }: { products:
             setSelectedProductIds([])
           }}
         />
+      )}
+
+      {/* ── EDIT PRODUCT MODAL ── */}
+      {editingProduct && (
+        <div className="modal-overlay" onClick={() => !editSubmitting && setEditingProduct(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px', padding: 0, overflow: 'hidden' }}>
+            <div style={{ background: 'linear-gradient(135deg, #4338ca, #6366f1)', padding: '24px', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#fff', margin: 0 }}>
+                ✏️ Editar Producto
+              </h2>
+              <div style={{ fontSize: '12px', color: '#c7d2fe', marginTop: '4px' }}>
+                {editingProduct.name} · ID: {editingProduct.id.slice(0, 8)}
+              </div>
+            </div>
+
+            <div style={{ padding: '24px', background: 'var(--c-surface-1)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--c-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre del Producto</label>
+                <input className="input-dark" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Nombre" />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--c-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Precio ($)</label>
+                <input className="input-dark" type="number" step="0.01" value={editForm.price} onChange={e => setEditForm({...editForm, price: e.target.value})} placeholder="Precio" style={{ fontSize: '18px', fontWeight: 700, color: 'var(--c-green)' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--c-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Categoría</label>
+                <select className="input-dark" value={editForm.categoryId} onChange={e => setEditForm({...editForm, categoryId: e.target.value})}>
+                  <option value="">Sin categoría</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--c-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Descripción</label>
+                <textarea className="input-dark" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} placeholder="Descripción (opcional)" rows={2} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--c-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Código de Barras</label>
+                  <input className="input-dark" value={editForm.barcode} onChange={e => setEditForm({...editForm, barcode: e.target.value})} placeholder="Opcional" />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', color: 'var(--c-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Alérgenos</label>
+                  <input className="input-dark" value={editForm.allergens} onChange={e => setEditForm({...editForm, allergens: e.target.value})} placeholder="Ej. Lactosa" />
+                </div>
+              </div>
+
+              {/* Price change indicator */}
+              {editForm.price && Number(editForm.price) !== editingProduct.price && (
+                <div style={{ padding: '10px 14px', borderRadius: '10px', background: Number(editForm.price) > editingProduct.price ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${Number(editForm.price) > editingProduct.price ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, fontSize: '12px', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--c-text-muted)' }}>Cambio de precio:</span>
+                  <span>
+                    <span style={{ textDecoration: 'line-through', color: 'var(--c-text-muted)', marginRight: '8px' }}>${editingProduct.price}</span>
+                    <span style={{ color: Number(editForm.price) > editingProduct.price ? '#22c55e' : '#ef4444', fontWeight: 800 }}>
+                      → ${Number(editForm.price).toFixed(2)}
+                      {' '}({Number(editForm.price) > editingProduct.price ? '↑' : '↓'} {Math.abs(((Number(editForm.price) - editingProduct.price) / editingProduct.price) * 100).toFixed(0)}%)
+                    </span>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '16px 24px', background: 'var(--c-surface-2)', borderTop: '1px solid var(--c-border)', display: 'flex', gap: '12px' }}>
+              <button onClick={() => setEditingProduct(null)} className="btn-ghost" style={{ flex: 1, padding: '12px' }} disabled={editSubmitting}>
+                Cancelar
+              </button>
+              <button onClick={handleEditSubmit} className="btn-green" style={{ flex: 2, padding: '12px', fontSize: '14px' }} disabled={editSubmitting || !editForm.name || !editForm.price}>
+                {editSubmitting ? '⏳ Guardando...' : '✅ Guardar Cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

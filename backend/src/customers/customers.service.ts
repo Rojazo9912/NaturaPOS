@@ -23,6 +23,11 @@ export class CustomersService {
         orders: {
           take: 10,
           orderBy: { createdAt: 'desc' },
+          include: {
+            items: {
+              include: { product: true },
+            },
+          },
         },
       },
     });

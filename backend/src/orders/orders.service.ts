@@ -64,6 +64,7 @@ export class OrdersService {
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               subtotal: item.subtotal,
+              notes: item.notes || null,
             })),
           },
           payments: {

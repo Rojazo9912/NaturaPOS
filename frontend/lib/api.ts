@@ -48,11 +48,18 @@ export interface Customer {
 
 export interface DashboardSummary {
   salesToday: number
+  salesYesterday?: number
   salesWeek: number
   salesMonth: number
   ordersToday: number
+  ordersYesterday?: number
   avgTicket: number
   totalCustomers: number
+  grossProfitToday?: number
+  profitMargin?: number
+  cancellationsCount?: number
+  cancellationsTotal?: number
+  cancellationsToday?: Array<{ orderNumber: string; total: number; cashierName: string; cancelledAt: string }>
 }
 
 export interface TopProduct {
@@ -133,7 +140,15 @@ export async function apiSearchCustomers(token: string, phone: string): Promise<
   return res.json()
 }
 
-export async function apiCreateCustomer(token: string, data: { name: string; phone: string; email?: string; allergies?: string }): Promise<Customer> {
+export async function apiGetCustomer(token: string, id: string) {
+  const res = await fetch(`${API}/api/v1/customers/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error obteniendo cliente')
+  return res.json()
+}
+
+export async function apiCreateCustomer(token: string, data: { name: string, phone: string, email?: string, allergies?: string }): Promise<Customer> {
   const res = await fetch(`${API}/api/v1/customers`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },

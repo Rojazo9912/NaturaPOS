@@ -197,21 +197,37 @@ export default function DashboardPage() {
             ) : (
               <>
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-7">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-7">
                   {[
-                    { label: 'Ventas Hoy',        value: fmt(summary.salesToday),    sub: `${summary.ordersToday} órdenes`, emoji: '💰', color: '#22c55e' },
+                    { 
+                      label: 'Ventas Hoy',        
+                      value: fmt(summary.salesToday),    
+                      sub: `${summary.ordersToday} órdenes`, 
+                      emoji: '💰', 
+                      color: '#22c55e',
+                      trend: summary.salesYesterday ? ((summary.salesToday - summary.salesYesterday) / summary.salesYesterday) * 100 : undefined
+                    },
+                    { label: 'Utilidad Estimada',  value: fmt(summary.grossProfitToday || 0), sub: `Margen: ${(summary.profitMargin || 0).toFixed(0)}%`, emoji: '📈', color: '#10b981', highlight: true },
                     { label: 'Ventas Semana',     value: fmt(summary.salesWeek),     sub: 'Últimos 7 días',                emoji: '📅', color: '#3b82f6' },
                     { label: 'Ventas Mes',        value: fmt(summary.salesMonth),    sub: 'Últimos 30 días',               emoji: '📆', color: '#8b5cf6' },
                     { label: 'Ticket Promedio',   value: fmt(summary.avgTicket),     sub: 'Por orden hoy',                 emoji: '🧾', color: '#f59e0b' },
                     { label: 'Total Clientes',    value: summary.totalCustomers.toString(), sub: 'Base CRM',              emoji: '👥', color: '#ec4899' },
                     { label: 'Órdenes Hoy',       value: summary.ordersToday.toString(), sub: 'En esta sucursal',         emoji: '📊', color: '#14b8a6' },
+                    { label: 'Cancelaciones',     value: (summary.cancellationsCount || 0).toString(), sub: summary.cancellationsCount ? fmt(summary.cancellationsTotal || 0) + ' perdidos' : 'Sin cancelaciones', emoji: '🚫', color: summary.cancellationsCount ? '#ef4444' : '#22c55e', alert: (summary.cancellationsCount || 0) > 0 },
                   ].map(card => (
-                    <div key={card.label} className="bg-zinc-950 border border-zinc-900 rounded-2xl p-5 hover:border-zinc-800 transition-colors">
+                    <div key={card.label} className={`bg-zinc-950 border rounded-2xl p-5 hover:border-zinc-800 transition-colors ${(card as any).alert ? 'border-red-500/30 bg-red-950/10' : (card as any).highlight ? 'border-emerald-500/20 bg-emerald-950/5' : 'border-zinc-900'}`}>
                       <div className="flex justify-between items-start mb-3">
                         <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">{card.label}</span>
-                        <span className="text-xl w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">{card.emoji}</span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-xl w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">{card.emoji}</span>
+                          {card.trend !== undefined && (
+                            <span className={`text-[10px] font-bold mt-1 ${card.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {card.trend > 0 ? '↑' : card.trend < 0 ? '↓' : ''}{Math.abs(card.trend).toFixed(1)}% vs ayer
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-2xl font-black text-white tabular-nums">
+                      <div className={`text-2xl font-black tabular-nums ${(card as any).highlight ? 'text-emerald-400' : (card as any).alert ? 'text-red-400' : 'text-white'}`}>
                         {card.value}
                       </div>
                       <div className="text-[11px] text-zinc-500 mt-1">{card.sub}</div>
@@ -280,12 +296,40 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                {/* Cancellations Detail (if any) */}
+                {(summary.cancellationsCount || 0) > 0 && summary.cancellationsToday && (
+                  <div className="bg-red-950/10 border border-red-500/20 rounded-2xl p-6 mb-7 animate-fadeIn">
+                    <h3 className="text-sm font-bold text-red-400 mb-4 uppercase tracking-wider opacity-80 flex items-center gap-2">
+                      🚫 Cancelaciones del Día — {summary.cancellationsCount || 0} orden{(summary.cancellationsCount || 0) > 1 ? 'es' : ''}
+                      <span className="ml-auto text-xs font-black text-red-500">{fmt(summary.cancellationsTotal || 0)}</span>
+                    </h3>
+                    <div className="space-y-3">
+                      {summary.cancellationsToday.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between bg-zinc-950/50 border border-red-900/30 rounded-xl p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 text-sm font-bold">#{i + 1}</div>
+                            <div>
+                              <div className="text-sm font-bold text-white">{c.orderNumber}</div>
+                              <div className="text-[11px] text-zinc-500">Cajero: <span className="text-zinc-300 font-medium">{c.cashierName}</span></div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-black text-red-400">{fmt(c.total)}</div>
+                            <div className="text-[10px] text-zinc-600">{new Date(c.cancelledAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Quick Stats Footer */}
                 <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6 flex flex-col md:flex-row gap-6 md:gap-10">
                   {[
                     { label: 'Tasa de conversión', value: summary.ordersToday > 0 ? '100%' : '—' },
                     { label: 'Ingresos vs semana', value: summary.salesWeek > 0 ? fmt(summary.salesWeek / 7) + '/día' : '—' },
                     { label: 'Ingresos vs mes', value: summary.salesMonth > 0 ? fmt(summary.salesMonth / 30) + '/día' : '—' },
+                    { label: 'Utilidad diaria prom.', value: summary.grossProfitToday !== undefined ? fmt(summary.grossProfitToday) : '—' },
                   ].map(stat => (
                     <div key={stat.label}>
                       <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">{stat.label}</div>
