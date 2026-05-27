@@ -12,6 +12,7 @@ import {
   apiGetPendingOrdersCount,
   apiCreateCustomer,
   apiGetIngredients, apiAdjustInventory,
+  apiCreateCashMovement,
   type Product, type Category, type Customer,
 } from '@/lib/api'
 import { printTicketWebUSB } from '@/lib/printer'
@@ -173,6 +174,49 @@ export default function POSPage() {
       addToast(`❌ Error al registrar merma: ${err.message || 'Error desconocido'}`)
     } finally {
       setSubmittingWaste(false)
+    }
+  }
+
+  // ── Módulo de Movimientos de Caja (Aportes/Retiros) ──
+  const [showCashMovementModal, setShowCashMovementModal] = useState(false)
+  const [cashMovementType, setCashMovementType] = useState<'IN' | 'OUT'>('IN')
+  const [cashMovementAmount, setCashMovementAmount] = useState('')
+  const [cashMovementReason, setCashMovementReason] = useState('Aporte de cambio')
+  const [cashMovementNotes, setCashMovementNotes] = useState('')
+  const [submittingCashMovement, setSubmittingCashMovement] = useState(false)
+
+  const handleSaveCashMovement = async () => {
+    const amountNum = Number(cashMovementAmount)
+    if (!amountNum || amountNum <= 0) {
+      addToast('❌ Ingresa un monto válido mayor a cero.')
+      return
+    }
+
+    const token = getToken()
+    if (!token) return
+
+    setSubmittingCashMovement(true)
+    try {
+      await apiCreateCashMovement(token, {
+        type: cashMovementType,
+        amount: amountNum,
+        reason: `${cashMovementReason}${cashMovementNotes ? ' - ' + cashMovementNotes : ''}`
+      })
+
+      addToast(
+        cashMovementType === 'IN'
+          ? '💵 Entrada de efectivo (Aporte) registrada con éxito.'
+          : '💸 Salida de efectivo (Retiro) registrada con éxito.'
+      )
+
+      // Reset & close
+      setCashMovementAmount('')
+      setCashMovementNotes('')
+      setShowCashMovementModal(false)
+    } catch (err: any) {
+      addToast(`❌ Error al registrar movimiento: ${err.message || 'Error desconocido'}`)
+    } finally {
+      setSubmittingCashMovement(false)
     }
   }
 
@@ -523,6 +567,7 @@ export default function POSPage() {
             <a href="/inventory" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Stock">📦<span className="hide-mobile ml-1">Stock</span></a>
             <a href="/dashboard" className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500" title="Dashboard">📊<span className="hide-mobile ml-1">Dashboard</span></a>
             <button onClick={() => setShowWasteModal(true)} className="text-base md:text-xs text-zinc-400 no-underline hover:text-red-500 bg-transparent border-none cursor-pointer flex items-center p-0" style={{ font: 'inherit' }} title="Registrar Merma">🗑️<span className="hide-mobile ml-1">Merma</span></button>
+            <button onClick={() => setShowCashMovementModal(true)} className="text-base md:text-xs text-zinc-400 no-underline hover:text-green-500 bg-transparent border-none cursor-pointer flex items-center p-0" style={{ font: 'inherit' }} title="Movimiento de Efectivo">💸<span className="hide-mobile ml-1">Movimiento</span></button>
           </div>
         </div>
 
@@ -996,6 +1041,120 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Cash Movement Modal ── */}
+      {showCashMovementModal && (
+        <div className="modal-overlay" style={{ zIndex: 100 }}>
+          <div className="modal-content" style={{ maxWidth: '450px' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>Movimiento de Efectivo 💸</h3>
+            <p style={{ fontSize: '13px', color: 'var(--c-text-muted)', marginBottom: '20px' }}>
+              Registra entradas de cambio o retiros de efectivo realizados en el turno de caja.
+            </p>
+
+            {/* Cash Movement Type Selector */}
+            <div className="flex gap-2 mb-4">
+              <button 
+                onClick={() => { setCashMovementType('IN'); setCashMovementReason('Aporte de cambio') }} 
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  cashMovementType === 'IN' ? 'bg-green-500 text-black border-none' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                }`}
+              >
+                💵 Entrada / Aporte
+              </button>
+              <button 
+                onClick={() => { setCashMovementType('OUT'); setCashMovementReason('Pago a proveedor') }} 
+                className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                  cashMovementType === 'OUT' ? 'bg-red-500 text-white border-none' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                }`}
+              >
+                💸 Salida / Retiro
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+              {/* Quantity */}
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Monto de Efectivo ($)
+                </label>
+                <input 
+                  type="number"
+                  step="any"
+                  value={cashMovementAmount}
+                  onChange={e => setCashMovementAmount(e.target.value)}
+                  placeholder="$0.00"
+                  className="input-dark w-full p-2.5 text-sm"
+                  style={{ fontSize: '18px', fontWeight: 700, color: cashMovementType === 'IN' ? '#22c55e' : '#ef4444' }}
+                />
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Concepto / Motivo
+                </label>
+                {cashMovementType === 'IN' ? (
+                  <select 
+                    value={cashMovementReason} 
+                    onChange={e => setCashMovementReason(e.target.value)}
+                    className="input-dark w-full p-2.5 text-sm"
+                    style={{ background: '#0a0a0a' }}
+                  >
+                    <option value="Aporte de cambio">💵 Aporte de cambio (Monedas / Billetes)</option>
+                    <option value="Fondo inicial extra">💰 Fondo inicial extra</option>
+                    <option value="Otro">❓ Otro motivo</option>
+                  </select>
+                ) : (
+                  <select 
+                    value={cashMovementReason} 
+                    onChange={e => setCashMovementReason(e.target.value)}
+                    className="input-dark w-full p-2.5 text-sm"
+                    style={{ background: '#0a0a0a' }}
+                  >
+                    <option value="Pago a proveedor">🍇 Gasto / Pago a proveedor</option>
+                    <option value="Compra de insumos de emergencia">🧊 Compra de insumos de emergencia</option>
+                    <option value="Retiro de seguridad">🔒 Retiro de seguridad (Parcial)</option>
+                    <option value="Otro">❓ Otro motivo</option>
+                  </select>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label style={{ fontSize: '12px', color: 'var(--c-text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Detalles Adicionales (Opcional)
+                </label>
+                <input 
+                  type="text"
+                  value={cashMovementNotes}
+                  onChange={e => setCashMovementNotes(e.target.value)}
+                  placeholder="Ej: Proveedor de fresas, cambio para el cajero..."
+                  className="input-dark w-full p-2.5 text-sm"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setShowCashMovementModal(false)} 
+                className="btn-ghost"
+                style={{ flex: 1, padding: '12px' }} 
+                disabled={submittingCashMovement}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSaveCashMovement} 
+                className="btn-green"
+                style={{ flex: 2, padding: '12px', background: cashMovementType === 'IN' ? '#22c55e' : '#ef4444', color: cashMovementType === 'IN' ? '#000' : '#fff', border: 'none' }} 
+                disabled={submittingCashMovement}
+              >
+                {submittingCashMovement ? 'Registrando...' : 'Confirmar Movimiento'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Waste Modal ── */}
       {showWasteModal && (

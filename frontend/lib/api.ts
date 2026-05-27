@@ -632,3 +632,31 @@ export async function apiLoginMfa(userId: string, code: string) {
   if (!res.ok) throw new Error('Código inválido')
   return res.json()
 }
+
+// ── Cash Movements ──────────────────
+export interface CashMovement {
+  id: string
+  cashRegisterId: string
+  type: 'IN' | 'OUT'
+  amount: number
+  reason: string
+  createdAt: string
+}
+
+export async function apiCreateCashMovement(token: string, data: { type: 'IN' | 'OUT'; amount: number; reason: string }): Promise<CashMovement> {
+  const res = await fetch(`${API}/api/v1/cash-register/movements`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Error al registrar movimiento de efectivo')
+  return res.json()
+}
+
+export async function apiGetActiveRegisterMovements(token: string): Promise<CashMovement[]> {
+  const res = await fetch(`${API}/api/v1/cash-register/active/movements`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Error cargando movimientos de caja')
+  return res.json()
+}

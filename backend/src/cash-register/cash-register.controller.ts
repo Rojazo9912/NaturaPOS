@@ -36,4 +36,14 @@ export class CashRegisterController {
   getBreakdown(@Param('id') id: string) {
     return this.cashRegisterService.getBreakdown(id);
   }
+
+  @Get('active/movements')
+  getActiveMovements(@CurrentUser() user: any) {
+    return this.cashRegisterService.getActiveMovements(user.branchId, user.id);
+  }
+
+  @Post('movements')
+  createMovement(@CurrentUser() user: any, @Body() dto: { type: 'IN' | 'OUT'; amount: number; reason: string }) {
+    return this.cashRegisterService.createMovement(user.id, user.branchId, dto);
+  }
 }

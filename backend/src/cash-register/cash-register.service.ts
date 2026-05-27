@@ -54,7 +54,15 @@ export class CashRegisterService {
     const totalWallet    = orders.flatMap(o => o.payments).filter(p => p.method === 'WALLET').reduce((s, p) => s + p.amount, 0);
     const totalQR        = orders.flatMap(o => o.payments).filter(p => p.method === 'QR').reduce((s, p) => s + p.amount, 0);
     
-    const expectedAmount = register.openingAmount + totalCash;
+    // Consultar todos los movimientos de efectivo del turno
+    const movements = await this.prisma.cashMovement.findMany({
+      where: { cashRegisterId: id },
+    });
+
+    const totalCashIn = movements.filter(m => m.type === 'IN').reduce((sum, m) => sum + m.amount, 0);
+    const totalCashOut = movements.filter(m => m.type === 'OUT').reduce((sum, m) => sum + m.amount, 0);
+
+    const expectedAmount = register.openingAmount + totalCash + totalCashIn - totalCashOut;
     const difference     = closingAmount - expectedAmount;
 
     // Calcular porcentaje de declaración fiscal de efectivo
@@ -158,7 +166,37 @@ export class CashRegisterService {
         cutDataFiscal
       }).catch(err => console.error('Error enviando email de cierre:', err));
 
-      return { register: updated, summary: { totalSales, totalCash, difference, ordersCount: orders.length } };
+      return { register: updated, summary: { totalSales, totalCash, difference, ordersCount: orders.length, totalCashIn, totalCashOut } };
+    });
+  }
+
+  async createMovement(userId: string, branchId: string, data: { type: 'IN' | 'OUT'; amount: number; reason: string }) {
+    const active = await this.prisma.cashRegister.findFirst({
+      where: { branchId, userId, status: 'OPEN' },
+    });
+    if (!active) {
+      throw new BadRequestException('No tienes ninguna caja abierta para registrar movimientos de efectivo');
+    }
+
+    return this.prisma.cashMovement.create({
+      data: {
+        cashRegisterId: active.id,
+        type: data.type as any,
+        amount: Math.abs(data.amount),
+        reason: data.reason,
+      },
+    });
+  }
+
+  async getActiveMovements(branchId: string, userId: string) {
+    const active = await this.prisma.cashRegister.findFirst({
+      where: { branchId, userId, status: 'OPEN' },
+    });
+    if (!active) return [];
+
+    return this.prisma.cashMovement.findMany({
+      where: { cashRegisterId: active.id },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -191,6 +229,8 @@ export class CashRegisterService {
           <li>Cobros con Wallet/Puntos: $${data.cutDataAdmin.totalWallet.toFixed(2)}</li>
           <li>Cobros con Código QR: $${data.cutDataAdmin.totalQR.toFixed(2)}</li>
           <li>Descuentos Aplicados: $${data.cutDataAdmin.totalDiscounts.toFixed(2)}</li>
+          <li>Aportes de Efectivo: $${data.totalCashIn.toFixed(2)}</li>
+          <li>Retiros/Gastos de Caja: $${data.totalCashOut.toFixed(2)}</li>
           <li>Efectivo Esperado: $${data.expectedAmount.toFixed(2)}</li>
           <li>Efectivo Físico Declarado: $${data.closingAmount.toFixed(2)}</li>
         </ul>

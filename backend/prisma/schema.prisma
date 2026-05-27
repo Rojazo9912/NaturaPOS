@@ -537,6 +537,7 @@ model CashRegister {
   branch         Branch         @relation(fields: [branchId], references: [id])
   user           User           @relation(fields: [userId], references: [id])
   cuts           FinancialCut[]
+  movements      CashMovement[]
 
   @@map("cash_registers")
 }
@@ -691,4 +692,26 @@ enum Severity {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+// ─────────────────────────────────────────────
+// MOVIMIENTOS DE CAJA (APORTES Y RETIROS)
+// ─────────────────────────────────────────────
+
+model CashMovement {
+  id             String           @id @default(cuid())
+  cashRegisterId String
+  type           CashMovementType
+  amount         Float
+  reason         String
+  createdAt      DateTime         @default(now())
+
+  cashRegister   CashRegister     @relation(fields: [cashRegisterId], references: [id])
+
+  @@map("cash_movements")
+}
+
+enum CashMovementType {
+  IN
+  OUT
 }

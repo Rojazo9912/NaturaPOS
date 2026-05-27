@@ -10,6 +10,7 @@ import {
   apiGetRegisterHistory,
   apiGetOrders,
   apiGetRegisterBreakdown,
+  apiGetActiveRegisterMovements,
   type CashRegister,
 } from '@/lib/api'
 
@@ -33,6 +34,7 @@ export default function CashRegisterPage() {
   const [submitting, setSubmitting]       = useState(false)
   const [closeSummary, setCloseSummary]   = useState<any>(null)
   const [todayOrders, setTodayOrders]     = useState<any[]>([])
+  const [movements, setMovements]         = useState<any[]>([])
 
   const loadData = async () => {
     const token = getToken()
@@ -47,6 +49,13 @@ export default function CashRegisterPage() {
       setActiveReg(active)
       setHistory(hist)
       setTodayOrders(orders)
+      
+      if (active) {
+        const movs = await apiGetActiveRegisterMovements(token).catch(() => [])
+        setMovements(movs)
+      } else {
+        setMovements([])
+      }
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -218,6 +227,47 @@ export default function CashRegisterPage() {
                     />
                   </div>
                   
+                  {/* Historial de Movimientos de Efectivo del Turno */}
+                  {movements.length > 0 && (
+                    <div className="border border-zinc-900 bg-zinc-900/10 rounded-2xl p-4 space-y-3">
+                      <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex justify-between">
+                        <span>💸 Movimientos del Turno</span>
+                        <span className="text-zinc-600 font-medium">{movements.length} registros</span>
+                      </h4>
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 no-scrollbar text-xs">
+                        {movements.map(m => (
+                          <div key={m.id} className="flex justify-between items-center bg-zinc-900/30 p-2.5 rounded-lg border border-zinc-900/50">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-white flex items-center gap-1.5">
+                                <span>{m.type === 'IN' ? '💵 Aporte' : '💸 Retiro'}</span>
+                                <span className={m.type === 'IN' ? 'text-green-500' : 'text-red-500'}>
+                                  {m.type === 'IN' ? '+' : '-'}{fmt(m.amount)}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-zinc-500 truncate mt-0.5" title={m.reason}>
+                                {m.reason}
+                              </div>
+                            </div>
+                            <span className="text-[9px] text-zinc-600 font-mono">
+                              {new Date(m.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-xs pt-2 border-t border-zinc-900 text-zinc-400 font-bold">
+                        <span>Balance Neto Movs:</span>
+                        <span className={
+                          movements.reduce((sum, m) => sum + (m.type === 'IN' ? m.amount : -m.amount), 0) >= 0 
+                            ? 'text-green-500' 
+                            : 'text-red-500'
+                        }>
+                          {movements.reduce((sum, m) => sum + (m.type === 'IN' ? m.amount : -m.amount), 0) >= 0 ? '+' : ''}
+                          {fmt(movements.reduce((sum, m) => sum + (m.type === 'IN' ? m.amount : -m.amount), 0))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <button 
                     onClick={handleClose} 
                     disabled={submitting || !closingAmount} 
